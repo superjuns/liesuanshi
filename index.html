@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>📐🧮 数线图 & 计数器 列算式</title>
+    <title>看图列算式</title>
     <style>
         /* --- 基础重置与全局 --- */
         * {
@@ -13,16 +13,38 @@
         }
         html, body {
             height: 100%;
-            overflow: hidden; /* 防抖，减少额外的滚动 */
+            overflow-y: auto;
         }
+        /* 弱化滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.15);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,0,0,0.25);
+        }
+        /* Firefox 滚动条 */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0,0,0,0.15) transparent;
+        }
+
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: #f4f7f9;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             margin: 0;
             padding: 10px;
+            min-height: 100vh;
         }
 
         .container {
@@ -33,11 +55,11 @@
             text-align: center;
             width: 100%;
             max-width: 440px;
-            height: 100%;
-            max-height: 780px; /* 适配最大手机高度 */
+            margin: 10px auto;
+            max-height: 90vh;
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
         }
 
         /* --- 头部区域 --- */
@@ -55,6 +77,14 @@
             margin-bottom: 8px;
             letter-spacing: 1px;
         }
+        .top-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            width: 100%;
+        }
         .mode-selector {
             padding: 6px 12px;
             border: 2px solid #dcdfe6;
@@ -68,6 +98,45 @@
             width: 160px;
             text-align: center;
         }
+        .btn-challenge {
+            padding: 6px 16px;
+            background: #e67e22;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(230, 126, 34, 0.3);
+        }
+        .btn-challenge:hover {
+            background: #d35400;
+            transform: translateY(-1px);
+        }
+        .btn-challenge:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        .timer-box {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2c3e50;
+            background: #ecf0f1;
+            padding: 2px 14px;
+            border-radius: 20px;
+            min-width: 60px;
+        }
+        .user-badge {
+            font-size: 13px;
+            color: #7f8c8d;
+            background: #f1f2f6;
+            padding: 2px 12px;
+            border-radius: 12px;
+            white-space: nowrap;
+        }
 
         /* --- 动态展示区 --- */
         .dynamic-content {
@@ -77,52 +146,49 @@
             margin-bottom: 10px;
             padding: 8px 0;
             border: 1px solid #ecf0f1;
-            min-height: 150px; /* 手机版缩窄高度 */
+            min-height: 150px;
             display: flex;
             justify-content: center;
             align-items: center;
             position: relative;
             overflow: hidden;
         }
-
-        /* 数线图 Canvas */
         .canvas-wrapper { width: 100%; display: none; }
         #numberLineCanvas {
             width: 100%;
             height: auto;
-            max-height: 140px; /* 避免占用过多高度 */
+            max-height: 140px;
             background: transparent;
             display: block;
         }
-
-        /* 计数器样式 (精简版) */
         .counter-wrapper { width: 100%; display: none; }
         .counter-row {
             display: flex;
             justify-content: center;
-            gap: 30px; /* 保证箭头不重叠 */
+            gap: 30px;
             padding: 5px 0;
         }
         .counter-col { display: flex; flex-direction: column; align-items: center; }
         .rod-container {
             position: relative;
-            height: 130px; /* 大幅压缩高度 */
+            height: 130px;
             width: 60px;
             display: flex;
             align-items: flex-end;
             justify-content: center;
             margin-bottom: 4px;
         }
+        /* 杆变细 */
         .rod {
             position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-            width: 6px; height: 100%; background: #8B5A2B; border-radius: 3px; z-index: 1;
+            width: 3px; height: 100%; background: #8B5A2B; border-radius: 2px; z-index: 1;
         }
         .bead-stack {
             display: flex; flex-direction: column-reverse; width: 100%; z-index: 2;
             padding-bottom: 5px; align-items: center;
         }
         .bead {
-            width: 20px; height: 11px;
+            width: 16px; height: 9px;
             background: radial-gradient(circle at 30% 30%, #ffb347, #f58f20);
             border-radius: 50%; margin: 0 auto 2px auto; border: 1px solid #e08010;
         }
@@ -132,8 +198,8 @@
             padding: 4px 8px; border-radius: 8px; border: 2px dashed #3498db;
             background: transparent; min-width: 20px; min-height: 20px; gap: 1px;
         }
-        .action-add { border-color: #3498db; }
-        .action-sub { border-color: #e74c3c; }
+        .action-add { border-color: #e74c3c; }
+        .action-sub { border-color: #3498db; }
         .indicator-bead {
             width: 16px; height: 9px;
             background: radial-gradient(circle at 30% 30%, #ffb347, #f58f20);
@@ -156,6 +222,12 @@
             background: #fdf5e6; border: 2px solid #d2b48c; padding: 2px 8px;
             border-radius: 6px; font-size: 16px; font-weight: bold; color: #333;
         }
+        .progress-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: #7f8c8d;
+            margin-top: 4px;
+        }
 
         /* --- 算式输入框区 --- */
         .equation-container {
@@ -175,6 +247,7 @@
         .input-box.active, .op-input.active { border-color: #3498db; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.4); }
         .input-box.correct, .op-input.correct { border-color: #2ecc71; background-color: #eafaf1; }
         .input-box.wrong, .op-input.wrong { border-color: #e74c3c; background-color: #fdedec; }
+
         .eq-symbol { font-size: 26px; font-weight: bold; color: #2c3e50; }
 
         /* --- 按钮控制区 --- */
@@ -188,18 +261,20 @@
         }
         .btn-check { background-color: #3498db; color: white; box-shadow: 0 3px 6px rgba(52, 152, 219, 0.2); }
         .btn-check:hover { background-color: #2980b9; transform: translateY(-1px); }
+        .btn-check:disabled { background-color: #bdc3c7; cursor: not-allowed; box-shadow: none; transform: none; }
         .btn-next { background-color: #ecf0f1; color: #2c3e50; }
         .btn-next:hover { background-color: #dde1e3; transform: translateY(-1px); }
+        .btn-next:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
         .message-box {
             flex-shrink: 0; height: 20px; font-size: 16px; font-weight: bold; color: #27ae60; margin: 2px 0;
         }
         .message-box.error { color: #e74c3c; }
 
-        /* --- 虚拟键盘 (强制在底部) --- */
+        /* --- 虚拟键盘 --- */
         .keypad-container {
             flex-shrink: 0;
-            margin-top: auto; /* 推到底部 */
+            margin-top: 8px;
             width: 100%; max-width: 340px; margin-left: auto; margin-right: auto;
         }
         .keypad-grid {
@@ -215,37 +290,255 @@
         .key-btn.op-btn.minus { color: #2980b9; }
         .key-btn.fn-btn { background-color: #f1f2f6; color: #7f8c8d; }
         .key-btn.span-2 { grid-column: span 2; }
+        .key-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        /* --- 极窄屏兼容（iPhone SE等） --- */
+        /* --- 排行榜 --- */
+        .rank-container {
+            flex-shrink: 0;
+            margin-top: 10px;
+            border-top: 1px solid #ecf0f1;
+            padding-top: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .rank-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .rank-title button {
+            background: none;
+            border: none;
+            color: #3498db;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 0 6px;
+        }
+        .rank-list {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .rank-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 2px 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            align-items: center;
+        }
+        .rank-item .rank-pos {
+            font-weight: 700;
+            color: #7f8c8d;
+            width: 24px;
+        }
+        .rank-item .rank-name {
+            font-weight: 600;
+            color: #2c3e50;
+            flex: 1;
+            text-align: left;
+            margin-left: 4px;
+        }
+        .rank-item .rank-score {
+            font-weight: 700;
+            color: #e67e22;
+        }
+        .rank-item .rank-time {
+            font-size: 11px;
+            color: #95a5a6;
+            margin-left: 8px;
+        }
+        .rank-empty {
+            font-size: 13px;
+            color: #bdc3c7;
+            padding: 6px 0;
+        }
+
+        /* --- 模态框 --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: white;
+            border-radius: 24px;
+            padding: 28px 24px 20px;
+            max-width: 340px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalIn 0.3s ease;
+        }
+        @keyframes modalIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .modal-box h2 {
+            font-size: 20px;
+            color: #2c3e50;
+            margin-bottom: 16px;
+        }
+        .modal-box .field {
+            margin-bottom: 14px;
+            text-align: left;
+        }
+        .modal-box label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .modal-box select, .modal-box input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #dcdfe6;
+            border-radius: 12px;
+            font-size: 16px;
+            outline: none;
+            transition: border 0.2s;
+            background: white;
+        }
+        .modal-box select:focus, .modal-box input:focus {
+            border-color: #3498db;
+        }
+        .modal-box .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            justify-content: center;
+        }
+        .modal-box .modal-actions button {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .modal-box .btn-confirm {
+            background: #e67e22;
+            color: white;
+            box-shadow: 0 3px 12px rgba(230, 126, 34, 0.3);
+        }
+        .modal-box .btn-confirm:hover { background: #d35400; }
+        .modal-box .btn-confirm:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .modal-box .btn-cancel {
+            background: #ecf0f1;
+            color: #2c3e50;
+        }
+        .modal-box .btn-cancel:hover { background: #dde1e3; }
+        .modal-box .modal-error {
+            color: #e74c3c;
+            font-size: 14px;
+            min-height: 20px;
+            margin-top: 4px;
+        }
+        .modal-box .modal-success {
+            color: #27ae60;
+            font-size: 14px;
+            min-height: 20px;
+            margin-top: 4px;
+        }
+
+        /* --- 完成弹窗 --- */
+        .result-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(6px);
+        }
+        .result-overlay.show { display: flex; }
+        .result-box {
+            background: white;
+            border-radius: 28px;
+            padding: 30px 24px 24px;
+            max-width: 340px;
+            width: 90%;
+            text-align: center;
+            animation: modalIn 0.4s ease;
+        }
+        .result-box .result-icon { font-size: 48px; margin-bottom: 6px; }
+        .result-box h2 { font-size: 22px; color: #2c3e50; margin-bottom: 4px; }
+        .result-box .result-stats {
+            font-size: 16px;
+            color: #7f8c8d;
+            margin: 10px 0;
+            line-height: 1.8;
+        }
+        .result-box .result-stats span { font-weight: 700; color: #2c3e50; }
+        .result-box .btn-done {
+            padding: 10px 40px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: background 0.2s;
+        }
+        .result-box .btn-done:hover { background: #2980b9; }
+
+        /* --- 极窄屏兼容 --- */
         @media (max-width: 400px) {
-            .container { padding: 12px 10px; max-height: 740px; }
+            .container { padding: 12px 10px; max-height: 95vh; }
             .input-box, .op-input { width: 36px; height: 36px; font-size: 18px; border-width: 2px; }
             .equation-container { gap: 4px; margin: 4px 0; }
             .key-btn { height: 34px; font-size: 17px; }
             .keypad-grid { gap: 4px; }
             .rod-container { height: 110px; width: 50px; }
-            .bead { width: 16px; height: 9px; }
+            .bead { width: 13px; height: 7px; }
             .indicator-bead { width: 13px; height: 7px; }
             .label-box { font-size: 14px; padding: 2px 5px; }
             .dynamic-content { min-height: 120px; padding: 5px 0; }
             .arrow-wrap { right: -16px; }
             .counter-row { gap: 24px; }
+            .rank-container { max-height: 120px; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <!-- 头部 -->
     <div class="header-area">
-        <div class="title">📐🧮 模式列算式</div>
-        <select id="modeSelect" class="mode-selector" onchange="switchMode()">
-            <option value="mixed">🎲 随机混合模式</option>
-            <option value="counter">🧮 计数器模式</option>
-            <option value="numberline">📐 数线图模式</option>
-        </select>
+        <div class="title">看图列算式</div>
+        <div class="top-bar">
+            <select id="modeSelect" class="mode-selector" onchange="switchMode()">
+                <option value="mixed">🎲 随机混合模式</option>
+                <option value="counter">🧮 计数器模式</option>
+                <option value="numberline">📐 数线图模式</option>
+            </select>
+            <button class="btn-challenge" id="btnChallenge" onclick="openAuthModal()">🏆 答题模式</button>
+            <span class="timer-box" id="timerDisplay">00:00</span>
+            <span class="user-badge" id="userBadge"></span>
+        </div>
     </div>
-    
-    <!-- 动态内容区 -->
+
+    <!-- 动态内容 -->
     <div class="dynamic-content" id="dynamicContent">
         <div class="counter-wrapper" id="counterWrapper"><div class="counter-row" id="counterRow"></div></div>
         <div class="canvas-wrapper" id="canvasWrapper"><canvas id="numberLineCanvas" width="800" height="280"></canvas></div>
@@ -260,10 +553,13 @@
         <input type="number" id="num3" class="input-box" placeholder="?" readonly>
     </div>
 
+    <!-- 进度提示 -->
+    <div class="progress-text" id="progressText"></div>
+
     <!-- 按钮区 -->
     <div class="btn-group">
-        <button class="btn-check" onclick="checkAnswer()">✅ 验证答案</button>
-        <button class="btn-next" onclick="generateProblem()">🔄 下一题</button>
+        <button class="btn-check" id="btnCheck" onclick="checkAnswer()">✅ 验证答案</button>
+        <button class="btn-next" id="btnNext" onclick="nextQuestion()">🔄 下一题</button>
     </div>
     <div id="messageBox" class="message-box"></div>
 
@@ -286,10 +582,64 @@
             <button class="key-btn span-2 fn-btn" onclick="handleKeyPress('C')">C</button>
         </div>
     </div>
+
+    <!-- 排行榜 -->
+    <div class="rank-container" id="rankContainer">
+        <div class="rank-title">
+            <span>🏅 今日排行榜</span>
+            <button onclick="fetchRank()">🔄 刷新</button>
+        </div>
+        <div class="rank-list" id="rankList">
+            <div class="rank-empty">暂无数据，快来挑战吧！</div>
+        </div>
+    </div>
+</div>
+
+<!-- 身份验证模态框 -->
+<div class="modal-overlay" id="authModal">
+    <div class="modal-box">
+        <h2>🏆 答题挑战</h2>
+        <div class="field">
+            <label>选择班级</label>
+            <select id="classSelect">
+                <option value="1班">1班</option>
+                <option value="2班">2班</option>
+                <option value="3班">3班</option>
+                <option value="4班">4班</option>
+                <option value="5班">5班</option>
+                <option value="6班">6班</option>
+                <option value="7班">7班</option>
+            </select>
+        </div>
+        <div class="field">
+            <label>你的姓名</label>
+            <input type="text" id="nameInput" placeholder="请输入姓名" maxlength="20">
+        </div>
+        <div class="modal-error" id="authError"></div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeAuthModal()">取消</button>
+            <button class="btn-confirm" id="btnAuthConfirm" onclick="confirmAuth()">开始挑战</button>
+        </div>
+    </div>
+</div>
+
+<!-- 完成弹窗 -->
+<div class="result-overlay" id="resultOverlay">
+    <div class="result-box">
+        <div class="result-icon">🎉</div>
+        <h2>挑战完成！</h2>
+        <div class="result-stats" id="resultStats">
+            答对 <span id="resultCorrect">0</span> 题<br>
+            用时 <span id="resultTime">00:00</span>
+        </div>
+        <button class="btn-done" onclick="closeResult()">太棒了！</button>
+    </div>
 </div>
 
 <script>
-    // --- 全局状态 ---
+    // ============================================================
+    // 1. 原有核心逻辑（数线图 & 计数器）
+    // ============================================================
     const modeSelect = document.getElementById('modeSelect');
     const counterWrapper = document.getElementById('counterWrapper');
     const canvasWrapper = document.getElementById('canvasWrapper');
@@ -301,6 +651,13 @@
     const num3Input = document.getElementById('num3');
     const opDisplay = document.getElementById('opDisplay');
     const messageBox = document.getElementById('messageBox');
+    const progressText = document.getElementById('progressText');
+    const btnCheck = document.getElementById('btnCheck');
+    const btnNext = document.getElementById('btnNext');
+    const btnChallenge = document.getElementById('btnChallenge');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const userBadge = document.getElementById('userBadge');
+
     let activeInput = num1Input;
 
     function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
@@ -312,25 +669,37 @@
         activeInput.focus();
     }
 
-    // --- 计数器核心 ---
+    // --- 计数器 ---
     let cntProblem = { a_tens:0, a_ones:0, b_tens:0, b_ones:0, result:0, isAdd:true };
     function generateCounterProblem() {
         const type = randInt(1, 2);
         let a_t, a_o, b_t, b_o, res, isAdd;
-        if (type === 1) { // 不进位加法
+        if (type === 1) {
+            // 加法：下方显示加数，虚线框显示另一个加数，结果 = 两者之和
             do {
                 a_t = randInt(1, 9); a_o = randInt(1, 9);
                 const maxBT = 9 - a_t, maxBO = 9 - a_o;
                 do { b_t = randInt(0, maxBT); b_o = randInt(0, maxBO); } while (b_t === 0 && b_o === 0);
             } while (a_t === 0 && a_o === 0);
             res = (a_t + b_t) * 10 + (a_o + b_o); isAdd = true;
-        } else { // 不退位减法
+        } else {
+            // 减法：下方显示差值（剩余部分），虚线框显示减数，被减数 = 差 + 减数
+            let d_t, d_o, s_t, s_o;
             do {
-                a_t = randInt(1, 5); a_o = randInt(1, 5);
-                const maxBT = Math.min(a_t, 9 - a_t), maxBO = Math.min(a_o, 9 - a_o);
-                do { b_t = randInt(0, maxBT); b_o = randInt(0, maxBO); } while (b_t === 0 && b_o === 0);
-            } while (a_t === 0 && a_o === 0);
-            res = (a_t - b_t) * 10 + (a_o - b_o); isAdd = false;
+                d_t = randInt(0, 5); d_o = randInt(0, 5);
+                const maxST = 9 - d_t;
+                const maxSO = 9 - d_o;
+                do {
+                    s_t = randInt(0, maxST);
+                    s_o = randInt(0, maxSO);
+                } while (s_t === 0 && s_o === 0);
+            } while (d_t === 0 && d_o === 0);
+            a_t = d_t + s_t;
+            a_o = d_o + s_o;
+            b_t = s_t;
+            b_o = s_o;
+            res = d_t * 10 + d_o;
+            isAdd = false;
         }
         cntProblem = { a_tens:a_t, a_ones:a_o, b_tens:b_t, b_ones:b_o, result:res, isAdd:isAdd };
         renderCounter();
@@ -338,12 +707,19 @@
 
     function renderCounter() {
         const p = cntProblem;
-        const tensBeads = '<div class="bead"></div>'.repeat(p.a_tens);
-        const onesBeads = '<div class="bead"></div>'.repeat(p.a_ones);
+        let displayTens = p.a_tens;
+        let displayOnes = p.a_ones;
+        if (!p.isAdd) {
+            displayTens = p.a_tens - p.b_tens;
+            displayOnes = p.a_ones - p.b_ones;
+        }
+        const tensBeads = '<div class="bead"></div>'.repeat(displayTens);
+        const onesBeads = '<div class="bead"></div>'.repeat(displayOnes);
+
         const genInd = (val, isAdd) => {
             if (val <= 0) return '';
             const action = isAdd ? 'action-add' : 'action-sub';
-            const arrow = isAdd ? 'arrow-up' : 'arrow-down';
+            const arrow = isAdd ? 'arrow-down' : 'arrow-up';
             return `<div class="action-indicator ${action}">${'<div class="indicator-bead"></div>'.repeat(val)}<div class="arrow-wrap ${arrow}"><div class="arrow-line"></div><div class="arrow-head"></div></div></div>`;
         };
         counterRow.innerHTML = `
@@ -352,7 +728,7 @@
         `;
     }
 
-    // --- 数线图核心 ---
+    // --- 数线图 ---
     let nlStart = 0, nlStep = 0, nlEnd = 0, nlOp = '+';
     function generateNumberLineProblem() {
         const type = randInt(1, 4);
@@ -433,13 +809,13 @@
         ctx.arcTo(x, y+h, x, y, r); ctx.arcTo(x, y, x+w, y, r); ctx.closePath();
     }
 
-    // --- 模式切换与主控 ---
+    // --- 模式切换 ---
     function switchMode() {
         const mode = modeSelect.value;
         if (mode === 'numberline') { counterWrapper.style.display = 'none'; canvasWrapper.style.display = 'block'; }
         else if (mode === 'counter') { counterWrapper.style.display = 'block'; canvasWrapper.style.display = 'none'; }
         else { counterWrapper.style.display = 'block'; canvasWrapper.style.display = 'block'; }
-        generateProblem();
+        if (!isChallengeMode) generateProblem();
     }
 
     function generateProblem() {
@@ -457,18 +833,378 @@
         else { counterWrapper.style.display = 'block'; canvasWrapper.style.display = 'none'; generateCounterProblem(); }
     }
 
-    // --- 键盘交互与跳转 ---
+    // ============================================================
+    // 2. 答题模式（挑战）状态
+    // ============================================================
+    let isChallengeMode = false;
+    let challengeUser = null;        // { class: '3班', name: '张三' }
+    let challengeQuestions = [];
+    let challengeIndex = 0;
+    let challengeCorrect = 0;
+    let challengeStartTime = null;
+    let challengeTimerInterval = null;
+    let challengeSeconds = 0;
+    let isAnswering = false;        // 当前题目是否已答
+
+    const TOTAL_QUESTIONS = 5;
+
+    // ============================================================
+    // 3. 身份验证（白名单 API）- 已更新为 /all 接口
+    // ============================================================
+    function openAuthModal() {
+        if (isChallengeMode) {
+            return;
+        }
+        document.getElementById('authModal').classList.add('show');
+        document.getElementById('authError').textContent = '';
+        document.getElementById('nameInput').value = '';
+        document.getElementById('btnAuthConfirm').disabled = false;
+    }
+
+    function closeAuthModal() {
+        document.getElementById('authModal').classList.remove('show');
+        document.getElementById('authError').textContent = '';
+    }
+
+    async function confirmAuth() {
+        const cls = document.getElementById('classSelect').value;
+        const name = document.getElementById('nameInput').value.trim();
+        const errorEl = document.getElementById('authError');
+        const btn = document.getElementById('btnAuthConfirm');
+
+        if (!name) {
+            errorEl.textContent = '⚠️ 请输入姓名';
+            return;
+        }
+        if (name.length > 20) {
+            errorEl.textContent = '⚠️ 姓名不能超过20个字符';
+            return;
+        }
+
+        btn.disabled = true;
+        errorEl.textContent = '⏳ 验证中...';
+
+        try {
+            const resp = await fetch('https://wzkjgz.site/api/5tmbx2o6rg/all');
+            if (!resp.ok) throw new Error('网络请求失败');
+            const data = await resp.json();
+            const submissions = data.submissions || [];
+            const matched = submissions.some(item => {
+                return item.class === cls && item.name === name;
+            });
+
+            if (!matched) {
+                errorEl.textContent = '❌ 未在白名单中找到匹配信息，请检查班级和姓名';
+                btn.disabled = false;
+                return;
+            }
+
+            errorEl.textContent = '';
+            closeAuthModal();
+            startChallenge(cls, name);
+
+        } catch (err) {
+            errorEl.textContent = '❌ 验证失败，请检查网络后重试';
+            btn.disabled = false;
+        }
+    }
+
+    // ============================================================
+    // 4. 挑战模式核心
+    // ============================================================
+    function startChallenge(cls, name) {
+        isChallengeMode = true;
+        challengeUser = { class: cls, name: name };
+        challengeIndex = 0;
+        challengeCorrect = 0;
+        challengeSeconds = 0;
+        isAnswering = false;
+        userBadge.textContent = `${cls} · ${name}`;
+        btnChallenge.disabled = true;
+        btnChallenge.textContent = '⏳ 挑战中';
+
+        modeSelect.disabled = true;
+
+        challengeQuestions = [];
+        for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+            const useNumLine = Math.random() > 0.5;
+            let q;
+            if (useNumLine) {
+                const type = randInt(1, 4);
+                let a, b, op;
+                if (type === 1) {
+                    do { let tA=randInt(0,9), tB=randInt(0,9-tA), oA=randInt(0,9), oB=randInt(0,9-oA); a = tA*10+oA; b = tB*10+oB; } while (a+b > 100 || b === 0);
+                    op = '+';
+                } else if (type === 2) {
+                    do { let tA=randInt(0,9), tB=randInt(0,tA+1), oA=randInt(0,9), oB=randInt(0,oA+1); a = tA*10+oA; b = tB*10+oB; } while (a === 0 || b === 0 || a-b < 0);
+                    op = '-';
+                } else if (type === 3) {
+                    do { a = randInt(2, 9); b = randInt(2, 9); } while (a+b <= 10 || a+b > 20);
+                    op = '+';
+                } else {
+                    do { a = randInt(11, 19); let oA = a % 10; b = randInt(oA+1, 9); } while (a-b < 0 || a-b >= 10 || b === 0);
+                    op = '-';
+                }
+                q = { type: 'numberline', a, b, op, result: op === '+' ? a+b : a-b };
+            } else {
+                const type = randInt(1, 2);
+                let a_t, a_o, b_t, b_o, res, isAdd;
+                if (type === 1) {
+                    do {
+                        a_t = randInt(1, 9); a_o = randInt(1, 9);
+                        const maxBT = 9 - a_t, maxBO = 9 - a_o;
+                        do { b_t = randInt(0, maxBT); b_o = randInt(0, maxBO); } while (b_t === 0 && b_o === 0);
+                    } while (a_t === 0 && a_o === 0);
+                    res = (a_t + b_t) * 10 + (a_o + b_o); isAdd = true;
+                } else {
+                    let d_t, d_o, s_t, s_o;
+                    do {
+                        d_t = randInt(0, 5); d_o = randInt(0, 5);
+                        const maxST = 9 - d_t;
+                        const maxSO = 9 - d_o;
+                        do {
+                            s_t = randInt(0, maxST);
+                            s_o = randInt(0, maxSO);
+                        } while (s_t === 0 && s_o === 0);
+                    } while (d_t === 0 && d_o === 0);
+                    a_t = d_t + s_t;
+                    a_o = d_o + s_o;
+                    b_t = s_t;
+                    b_o = s_o;
+                    res = d_t * 10 + d_o;
+                    isAdd = false;
+                }
+                q = { type: 'counter', a_tens: a_t, a_ones: a_o, b_tens: b_t, b_ones: b_o, result: res, isAdd };
+            }
+            challengeQuestions.push(q);
+        }
+
+        challengeStartTime = Date.now();
+        challengeTimerInterval = setInterval(updateTimer, 1000);
+
+        showChallengeQuestion(0);
+
+        btnCheck.disabled = false;
+        btnNext.disabled = true;
+        progressText.textContent = `第 1 / ${TOTAL_QUESTIONS} 题`;
+    }
+
+    function showChallengeQuestion(index) {
+        const q = challengeQuestions[index];
+        if (!q) return;
+
+        [num1Input, num2Input, num3Input, opDisplay].forEach(inp => { inp.value = ''; inp.className = inp === opDisplay ? 'op-input' : 'input-box'; });
+        opDisplay.value = '';
+        messageBox.innerHTML = ''; messageBox.className = 'message-box';
+        isAnswering = false;
+        btnNext.disabled = true;
+        btnCheck.disabled = false;
+
+        if (q.type === 'numberline') {
+            counterWrapper.style.display = 'none';
+            canvasWrapper.style.display = 'block';
+            nlStart = q.a;
+            nlStep = q.b;
+            nlEnd = q.result;
+            nlOp = q.op;
+            drawNumberLine();
+        } else {
+            counterWrapper.style.display = 'block';
+            canvasWrapper.style.display = 'none';
+            cntProblem = {
+                a_tens: q.a_tens,
+                a_ones: q.a_ones,
+                b_tens: q.b_tens,
+                b_ones: q.b_ones,
+                result: q.result,
+                isAdd: q.isAdd
+            };
+            renderCounter();
+        }
+
+        setActiveInput(num1Input);
+        progressText.textContent = `第 ${index + 1} / ${TOTAL_QUESTIONS} 题`;
+    }
+
+    function updateTimer() {
+        challengeSeconds++;
+        const mins = String(Math.floor(challengeSeconds / 60)).padStart(2, '0');
+        const secs = String(challengeSeconds % 60).padStart(2, '0');
+        timerDisplay.textContent = `${mins}:${secs}`;
+    }
+
+    // --- 挑战模式下的验证 ---
+    async function checkAnswer() {
+        if (!isChallengeMode) {
+            legacyCheckAnswer();
+            return;
+        }
+
+        const n1 = parseInt(num1Input.value);
+        const n2 = parseInt(num2Input.value);
+        const n3 = parseInt(num3Input.value);
+        const userOp = opDisplay.value;
+
+        [num1Input, num2Input, num3Input, opDisplay].forEach(inp => inp.className = inp === opDisplay ? 'op-input' : 'input-box');
+        messageBox.className = 'message-box';
+
+        if (isNaN(n1) || isNaN(n2) || isNaN(n3) || userOp === '') {
+            messageBox.textContent = '⚠️ 请把数字和运算符都填满哦！';
+            messageBox.className = 'message-box error';
+            if (isNaN(n1)) num1Input.className = 'input-box wrong';
+            if (isNaN(n2)) num2Input.className = 'input-box wrong';
+            if (isNaN(n3)) num3Input.className = 'input-box wrong';
+            if (userOp === '') opDisplay.className = 'op-input wrong';
+            return;
+        }
+
+        const q = challengeQuestions[challengeIndex];
+        let exp1, exp2, exp3, expOp;
+        if (q.type === 'numberline') {
+            exp1 = q.a; exp2 = q.b; exp3 = q.result; expOp = q.op;
+        } else {
+            exp1 = q.a_tens * 10 + q.a_ones;
+            exp2 = q.b_tens * 10 + q.b_ones;
+            exp3 = q.result;
+            expOp = q.isAdd ? '+' : '-';
+        }
+
+        const isN1 = n1 === exp1, isN2 = n2 === exp2, isN3 = n3 === exp3, isOp = userOp === expOp;
+
+        if (isN1 && isN2 && isN3 && isOp) {
+            messageBox.textContent = '✅ 回答正确！';
+            messageBox.className = 'message-box';
+            num1Input.className = 'input-box correct';
+            num2Input.className = 'input-box correct';
+            num3Input.className = 'input-box correct';
+            opDisplay.className = 'op-input correct';
+            challengeCorrect++;
+            isAnswering = true;
+            btnCheck.disabled = true;
+            btnNext.disabled = false;
+        } else {
+            messageBox.textContent = '❌ 再检查一下，数字或符号错了吗？';
+            messageBox.className = 'message-box error';
+            if (!isN1) num1Input.className = 'input-box wrong';
+            if (!isN2) num2Input.className = 'input-box wrong';
+            if (!isN3) num3Input.className = 'input-box wrong';
+            if (!isOp) opDisplay.className = 'op-input wrong';
+        }
+    }
+
+    function nextQuestion() {
+        if (!isChallengeMode) {
+            generateProblem();
+            return;
+        }
+
+        if (!isAnswering) {
+            messageBox.textContent = '⚠️ 请先验证当前题目！';
+            messageBox.className = 'message-box error';
+            return;
+        }
+
+        challengeIndex++;
+        if (challengeIndex >= TOTAL_QUESTIONS) {
+            finishChallenge();
+            return;
+        }
+
+        showChallengeQuestion(challengeIndex);
+    }
+
+    async function finishChallenge() {
+        if (challengeTimerInterval) {
+            clearInterval(challengeTimerInterval);
+            challengeTimerInterval = null;
+        }
+
+        const elapsed = challengeSeconds;
+        const correct = challengeCorrect;
+        const total = TOTAL_QUESTIONS;
+        const score = Math.round((correct / total) * 100);
+
+        const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const secs = String(elapsed % 60).padStart(2, '0');
+        document.getElementById('resultCorrect').textContent = `${correct} / ${total}`;
+        document.getElementById('resultTime').textContent = `${mins}:${secs}`;
+        document.getElementById('resultOverlay').classList.add('show');
+
+        try {
+            const payload = {
+                class: challengeUser.class,
+                name: challengeUser.name,
+                score: score,
+                correct: correct,
+                total: total,
+                seconds: elapsed,
+                submitted_at: new Date().toISOString()
+            };
+            await fetch('https://wzkjgz.site/api/x0joelczoy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } catch (err) {
+            console.warn('提交成绩失败:', err);
+        }
+
+        resetChallengeMode();
+        fetchRank();
+    }
+
+    function resetChallengeMode() {
+        isChallengeMode = false;
+        challengeUser = null;
+        challengeQuestions = [];
+        challengeIndex = 0;
+        challengeCorrect = 0;
+        challengeSeconds = 0;
+        isAnswering = false;
+        if (challengeTimerInterval) {
+            clearInterval(challengeTimerInterval);
+            challengeTimerInterval = null;
+        }
+        timerDisplay.textContent = '00:00';
+        userBadge.textContent = '';
+        btnChallenge.disabled = false;
+        btnChallenge.textContent = '🏆 答题模式';
+        modeSelect.disabled = false;
+        btnCheck.disabled = false;
+        btnNext.disabled = false;
+        progressText.textContent = '';
+        generateProblem();
+    }
+
+    function closeResult() {
+        document.getElementById('resultOverlay').classList.remove('show');
+    }
+
+    // ============================================================
+    // 5. 键盘交互
+    // ============================================================
     function handleKeyPress(value) {
         if (value === '+' || value === '-') {
             if (opDisplay.value === '') {
-                opDisplay.value = value; opDisplay.style.color = value === '+' ? '#e74c3c' : '#2980b9';
+                opDisplay.value = value;
+                opDisplay.style.color = value === '+' ? '#e74c3c' : '#2980b9';
                 setActiveInput(num2Input);
             }
             return;
         }
-        if (value === '⌫') { activeInput.value = activeInput.value.slice(0, -1); return; }
-        if (value === 'C') { activeInput.value = ''; return; }
-        if (activeInput === opDisplay) { setActiveInput(num1Input); }
+        if (value === '⌫') {
+            activeInput.value = activeInput.value.slice(0, -1);
+            return;
+        }
+        if (value === 'C') {
+            activeInput.value = '';
+            return;
+        }
+        if (activeInput === opDisplay) {
+            setActiveInput(num1Input);
+        }
+
+        if (activeInput.value.length >= 6) return;
 
         activeInput.value += value;
 
@@ -478,18 +1214,30 @@
         if (isNumLine) { exp1 = nlStart; exp2 = nlStep; }
         else { exp1 = cntProblem.a_tens*10 + cntProblem.a_ones; exp2 = cntProblem.b_tens*10 + cntProblem.b_ones; }
 
-        if (activeInput === num1Input && activeInput.value.length === String(exp1).length) { setActiveInput(opDisplay); }
-        else if (activeInput === num2Input && activeInput.value.length === String(exp2).length) { setActiveInput(num3Input); }
+        if (isChallengeMode && challengeQuestions[challengeIndex]) {
+            const q = challengeQuestions[challengeIndex];
+            if (q.type === 'numberline') { exp1 = q.a; exp2 = q.b; }
+            else { exp1 = q.a_tens*10 + q.a_ones; exp2 = q.b_tens*10 + q.b_ones; }
+        }
+
+        if (activeInput === num1Input && activeInput.value.length === String(exp1).length) {
+            setActiveInput(opDisplay);
+        } else if (activeInput === num2Input && activeInput.value.length === String(exp2).length) {
+            setActiveInput(num3Input);
+        }
     }
 
-    // --- 验证逻辑 ---
-    function checkAnswer() {
+    // ============================================================
+    // 6. 原有验证（普通模式）
+    // ============================================================
+    function legacyCheckAnswer() {
         const n1 = parseInt(num1Input.value), n2 = parseInt(num2Input.value), n3 = parseInt(num3Input.value), userOp = opDisplay.value;
         [num1Input, num2Input, num3Input, opDisplay].forEach(inp => inp.className = inp===opDisplay?'op-input':'input-box');
         messageBox.className = 'message-box';
 
         if (isNaN(n1) || isNaN(n2) || isNaN(n3) || userOp === '') {
-            messageBox.textContent = '⚠️ 请把数字和运算符都填满哦！'; messageBox.className = 'message-box error';
+            messageBox.textContent = '⚠️ 请把数字和运算符都填满哦！';
+            messageBox.className = 'message-box error';
             if (isNaN(n1)) num1Input.className = 'input-box wrong';
             if (isNaN(n2)) num2Input.className = 'input-box wrong';
             if (isNaN(n3)) num3Input.className = 'input-box wrong';
@@ -509,7 +1257,8 @@
             num1Input.className = 'input-box correct'; num2Input.className = 'input-box correct';
             num3Input.className = 'input-box correct'; opDisplay.className = 'op-input correct';
         } else {
-            messageBox.textContent = '❌ 再检查一下，数字或符号错了吗？'; messageBox.className = 'message-box error';
+            messageBox.textContent = '❌ 再检查一下，数字或符号错了吗？';
+            messageBox.className = 'message-box error';
             if (!isN1) num1Input.className = 'input-box wrong';
             if (!isN2) num2Input.className = 'input-box wrong';
             if (!isN3) num3Input.className = 'input-box wrong';
@@ -517,12 +1266,83 @@
         }
     }
 
-    // --- 初始化 ---
+    // ============================================================
+    // 7. 排行榜
+    // ============================================================
+    async function fetchRank() {
+        const rankList = document.getElementById('rankList');
+        rankList.innerHTML = '<div class="rank-empty">加载中...</div>';
+
+        try {
+            const resp = await fetch('https://wzkjgz.site/api/x0joelczoy/all');
+            if (!resp.ok) throw new Error('网络请求失败');
+            const data = await resp.json();
+            const submissions = data.submissions || [];
+
+            if (submissions.length === 0) {
+                rankList.innerHTML = '<div class="rank-empty">暂无数据，快来挑战吧！</div>';
+                return;
+            }
+
+            const today = new Date().toISOString().slice(0, 10);
+            const todayItems = submissions.filter(item => {
+                const dateStr = item.submitted_at || item.timestamp || '';
+                return dateStr.startsWith(today);
+            });
+
+            if (todayItems.length === 0) {
+                rankList.innerHTML = '<div class="rank-empty">今日暂无数据，快来挑战吧！</div>';
+                return;
+            }
+
+            todayItems.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+            let html = '';
+            todayItems.forEach((item, idx) => {
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx+1}`;
+                const name = item.name || '未知';
+                const cls = item.class || '';
+                const score = item.score ?? 0;
+                const timeStr = item.submitted_at || item.timestamp || '';
+                const timeDisplay = timeStr ? timeStr.slice(11, 16) : '';
+                html += `
+                    <div class="rank-item">
+                        <span class="rank-pos">${medal}</span>
+                        <span class="rank-name">${cls} ${name}</span>
+                        <span class="rank-score">${score}分</span>
+                        <span class="rank-time">${timeDisplay}</span>
+                    </div>
+                `;
+            });
+            rankList.innerHTML = html;
+
+        } catch (err) {
+            rankList.innerHTML = '<div class="rank-empty">加载失败，点击刷新重试</div>';
+        }
+    }
+
+    // ============================================================
+    // 8. 初始化
+    // ============================================================
     window.onload = () => {
         [num1Input, num2Input, num3Input, opDisplay].forEach(inp => inp.onfocus = () => setActiveInput(inp));
         modeSelect.value = 'mixed';
         switchMode();
+        fetchRank();
+        setInterval(fetchRank, 30000);
     };
+
+    // 暴露全局函数
+    window.switchMode = switchMode;
+    window.generateProblem = generateProblem;
+    window.checkAnswer = checkAnswer;
+    window.nextQuestion = nextQuestion;
+    window.handleKeyPress = handleKeyPress;
+    window.openAuthModal = openAuthModal;
+    window.closeAuthModal = closeAuthModal;
+    window.confirmAuth = confirmAuth;
+    window.fetchRank = fetchRank;
+    window.closeResult = closeResult;
 </script>
 </body>
 </html>

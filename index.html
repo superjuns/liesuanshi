@@ -234,6 +234,7 @@
             border: 2.5px solid #dcdfe6; background-color: #fff; transition: all 0.2s ease;
             font-weight: 600; color: #2c3e50; outline: none; text-align: center; font-size: 22px;
             border-radius: 12px;
+            user-select: none;
         }
         .input-box { width: 44px; height: 44px; }
         .op-input { width: 44px; height: 44px; border-radius: 50%; caret-color: transparent; }
@@ -537,11 +538,11 @@
 
     <!-- 输入区 -->
     <div class="equation-container">
-        <input type="number" id="num1" class="input-box" placeholder="?">
-        <input type="text" id="opDisplay" class="op-input" placeholder="?">
-        <input type="number" id="num2" class="input-box" placeholder="?">
+        <input type="number" id="num1" class="input-box" placeholder="?" readonly>
+        <input type="text" id="opDisplay" class="op-input" placeholder="?" readonly>
+        <input type="number" id="num2" class="input-box" placeholder="?" readonly>
         <span class="eq-symbol">=</span>
-        <input type="number" id="num3" class="input-box" placeholder="?">
+        <input type="number" id="num3" class="input-box" placeholder="?" readonly>
     </div>
 
     <!-- 进度提示 -->
@@ -629,7 +630,7 @@
 
 <script>
     // ============================================================
-    // 1. 原有核心逻辑（数线图 & 计数器）
+    // 1. 核心逻辑
     // ============================================================
     const modeSelect = document.getElementById('modeSelect');
     const counterWrapper = document.getElementById('counterWrapper');
@@ -706,32 +707,22 @@
         advanceFocus();
     }
 
-    function onOpKeydown(e) {
+    function onKeyDown(e) {
         const key = e.key;
-        if (key === '+' || key === '-') {
-            e.preventDefault();
-            opDisplay.value = key;
-            opDisplay.dispatchEvent(new Event('input'));
-            if (opDisplay.value.length >= 1) {
-                setActiveInput(num2Input);
-            }
-        } else if (key === 'Backspace' || key === 'Delete') {
-            // 允许
-        } else {
-            e.preventDefault();
+        if (key === 'Tab' || key === 'Shift') {
+            return;
         }
+        e.preventDefault();
     }
 
     function bindInputEvents() {
-        [num1Input, num2Input, num3Input].forEach(inp => {
+        [num1Input, num2Input, num3Input, opDisplay].forEach(inp => {
             inp.addEventListener('input', onInput);
+            inp.addEventListener('keydown', onKeyDown);
             inp.addEventListener('focus', () => setActiveInput(inp));
+            inp.setAttribute('readonly', 'readonly');
         });
-        opDisplay.addEventListener('input', onInput);
-        opDisplay.addEventListener('focus', () => setActiveInput(opDisplay));
-        opDisplay.addEventListener('keydown', onOpKeydown);
     }
-
     bindInputEvents();
 
     // --- 计数器 ---
@@ -791,7 +782,7 @@
         `;
     }
 
-    // --- 数线图 ---
+    // --- 数线图（数字已增大）---
     let nlStart = 0, nlStep = 0, nlEnd = 0, nlOp = '+';
     function generateNumberLineProblem() {
         const type = randInt(1, 4);
@@ -823,11 +814,12 @@
         const getX = (v) => mLeft + ((v - gridStart) / (gridEnd - gridStart)) * drawW;
 
         ctx.strokeStyle = '#aab2bd'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(mLeft-10, baseY); ctx.lineTo(canvas.width-mRight+10, baseY); ctx.stroke();
-        ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#34495e';
+        // 坐标轴标签字体 24px
+        ctx.font = 'bold 24px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#34495e';
         for (let i = gridStart; i <= gridEnd; i += gridStep) {
             const x = getX(i);
             ctx.beginPath(); ctx.moveTo(x, baseY); ctx.lineTo(x, baseY+10); ctx.stroke();
-            ctx.fillText(i, x, baseY+14);
+            ctx.fillText(i, x, baseY+20);
         }
 
         const sx = getX(nlStart), ex = getX(nlEnd), color = nlOp==='+' ? '#e74c3c' : '#2980b9', cpY = 60;
@@ -839,7 +831,9 @@
             if (x2 > x1) { ctx.moveTo(x2, baseY-10-sz); ctx.lineTo(x2+sz, baseY-10); ctx.lineTo(x2, baseY-10+sz); }
             else { ctx.moveTo(x2, baseY-10-sz); ctx.lineTo(x2-sz, baseY-10); ctx.lineTo(x2, baseY-10+sz); }
             ctx.fill();
-            ctx.font = 'bold 20px Arial'; ctx.textBaseline = 'bottom'; ctx.fillText(prefix+stepVal, cpX, cpY-6);
+            // 步长标签 32px
+            ctx.font = 'bold 32px Arial'; ctx.textBaseline = 'bottom';
+            ctx.fillText(prefix+stepVal, cpX, cpY-10);
         };
 
         const absStep = Math.abs(nlStep), isTwoStep = (nlOp === '+' && nlStart < 10 && nlEnd > 10) || (nlOp === '-' && nlStart > 10 && nlEnd < 10);
@@ -857,14 +851,15 @@
             drawStep(sx, ex, absStep, nlOp === '+' ? '+' : '-');
         }
         ctx.beginPath(); ctx.arc(sx, baseY-10, 5, 0, Math.PI*2); ctx.strokeStyle = color; ctx.lineWidth=2; ctx.stroke(); ctx.fillStyle='#fff'; ctx.fill();
+        // 起点标签 22px
         if (nlStart % gridStep !== 0) {
-            const label = String(nlStart); ctx.font='bold 14px Arial'; const tw = ctx.measureText(label).width;
-            const lx = sx - (tw+16)/2, ly = baseY+30;
+            const label = String(nlStart); ctx.font='bold 22px Arial'; const tw = ctx.measureText(label).width;
+            const lx = sx - (tw+20)/2, ly = baseY+36;
             ctx.beginPath(); ctx.strokeStyle='#bdc3c7'; ctx.setLineDash([3,3]); ctx.lineWidth=1;
-            ctx.moveTo(sx, baseY+10); ctx.lineTo(sx, ly); ctx.stroke(); ctx.setLineDash([]);
-            ctx.fillStyle='#fff'; roundRect(ctx, lx, ly, tw+16, 24, 6); ctx.fill();
-            ctx.strokeStyle = color; ctx.lineWidth=1.5; roundRect(ctx, lx, ly, tw+16, 24, 6); ctx.stroke();
-            ctx.fillStyle=color; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(label, sx, ly+12);
+            ctx.moveTo(sx, baseY+10); ctx.lineTo(sx, ly-12); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle='#fff'; roundRect(ctx, lx, ly-14, tw+20, 28, 6); ctx.fill();
+            ctx.strokeStyle = color; ctx.lineWidth=1.5; roundRect(ctx, lx, ly-14, tw+20, 28, 6); ctx.stroke();
+            ctx.fillStyle=color; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(label, sx, ly);
         }
     }
     function roundRect(ctx, x, y, w, h, r) {
@@ -904,7 +899,7 @@
     }
 
     // ============================================================
-    // 2. 答题模式（挑战）状态
+    // 2. 答题模式（挑战）
     // ============================================================
     let isChallengeMode = false;
     let challengeUser = null;
@@ -915,11 +910,10 @@
     let challengeTimerInterval = null;
     let challengeSeconds = 0;
     let isAnswering = false;
-
     const TOTAL_QUESTIONS = 5;
 
     // ============================================================
-    // 3. 身份验证（白名单 API）- 已更新为 /all 接口
+    // 3. 身份验证
     // ============================================================
     function openAuthModal() {
         if (isChallengeMode) return;
@@ -976,7 +970,7 @@
     }
 
     // ============================================================
-    // 4. 挑战模式核心
+    // 4. 挑战核心
     // ============================================================
     function startChallenge(cls, name) {
         isChallengeMode = true;
@@ -1309,7 +1303,7 @@
     }
 
     // ============================================================
-    // 6. 原有验证（普通模式）
+    // 6. 普通模式验证
     // ============================================================
     function legacyCheckAnswer() {
         if (checkTimer) return;
@@ -1363,7 +1357,7 @@
     }
 
     // ============================================================
-    // 7. 排行榜（修改为显示 correct/total 和用时）
+    // 7. 排行榜
     // ============================================================
     async function fetchRank() {
         const rankList = document.getElementById('rankList');
@@ -1391,7 +1385,6 @@
                 return;
             }
 
-            // 按得分排序（得分高者优先），若得分相同则用时短者优先
             todayItems.sort((a, b) => {
                 const scoreA = a.score || 0;
                 const scoreB = b.score || 0;
@@ -1430,7 +1423,6 @@
     // 8. 初始化
     // ============================================================
     window.onload = () => {
-        [num1Input, num2Input, num3Input, opDisplay].forEach(inp => inp.removeAttribute('readonly'));
         modeSelect.value = 'mixed';
         switchMode();
         fetchRank();

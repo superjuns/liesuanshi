@@ -30,7 +30,6 @@
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(0,0,0,0.25);
         }
-        /* Firefox 滚动条 */
         * {
             scrollbar-width: thin;
             scrollbar-color: rgba(0,0,0,0.15) transparent;
@@ -62,7 +61,6 @@
             flex-direction: column;
         }
 
-        /* --- 头部区域 --- */
         .header-area {
             flex-shrink: 0;
             display: flex;
@@ -138,7 +136,6 @@
             white-space: nowrap;
         }
 
-        /* --- 动态展示区 --- */
         .dynamic-content {
             flex-shrink: 0;
             background-color: #fafcfd;
@@ -178,7 +175,6 @@
             justify-content: center;
             margin-bottom: 4px;
         }
-        /* 杆变细 */
         .rod {
             position: absolute; top: 0; left: 50%; transform: translateX(-50%);
             width: 3px; height: 100%; background: #8B5A2B; border-radius: 2px; z-index: 1;
@@ -229,7 +225,6 @@
             margin-top: 4px;
         }
 
-        /* --- 算式输入框区 --- */
         .equation-container {
             flex-shrink: 0;
             display: flex; justify-content: center; align-items: center;
@@ -250,7 +245,6 @@
 
         .eq-symbol { font-size: 26px; font-weight: bold; color: #2c3e50; }
 
-        /* --- 按钮控制区 --- */
         .btn-group {
             flex-shrink: 0;
             display: flex; justify-content: center; gap: 12px; margin: 6px 0;
@@ -271,7 +265,6 @@
         }
         .message-box.error { color: #e74c3c; }
 
-        /* --- 虚拟键盘 --- */
         .keypad-container {
             flex-shrink: 0;
             margin-top: 8px;
@@ -292,7 +285,6 @@
         .key-btn.span-2 { grid-column: span 2; }
         .key-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        /* --- 排行榜 --- */
         .rank-container {
             flex-shrink: 0;
             margin-top: 10px;
@@ -344,14 +336,16 @@
             text-align: left;
             margin-left: 4px;
         }
-        .rank-item .rank-score {
+        .rank-item .rank-correct {
             font-weight: 700;
             color: #e67e22;
+            margin-right: 8px;
         }
         .rank-item .rank-time {
             font-size: 11px;
             color: #95a5a6;
-            margin-left: 8px;
+            min-width: 40px;
+            text-align: right;
         }
         .rank-empty {
             font-size: 13px;
@@ -359,7 +353,6 @@
             padding: 6px 0;
         }
 
-        /* --- 模态框 --- */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -458,7 +451,6 @@
             margin-top: 4px;
         }
 
-        /* --- 完成弹窗 --- */
         .result-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -502,7 +494,6 @@
         }
         .result-box .btn-done:hover { background: #2980b9; }
 
-        /* --- 极窄屏兼容 --- */
         @media (max-width: 400px) {
             .container { padding: 12px 10px; max-height: 95vh; }
             .input-box, .op-input { width: 36px; height: 36px; font-size: 18px; border-width: 2px; }
@@ -546,11 +537,11 @@
 
     <!-- 输入区 -->
     <div class="equation-container">
-        <input type="number" id="num1" class="input-box" placeholder="?" readonly>
-        <input type="text" id="opDisplay" class="op-input" placeholder="?" readonly>
-        <input type="number" id="num2" class="input-box" placeholder="?" readonly>
+        <input type="number" id="num1" class="input-box" placeholder="?">
+        <input type="text" id="opDisplay" class="op-input" placeholder="?">
+        <input type="number" id="num2" class="input-box" placeholder="?">
         <span class="eq-symbol">=</span>
-        <input type="number" id="num3" class="input-box" placeholder="?" readonly>
+        <input type="number" id="num3" class="input-box" placeholder="?">
     </div>
 
     <!-- 进度提示 -->
@@ -669,13 +660,86 @@
         activeInput.focus();
     }
 
+    function getCurrentNumbers() {
+        let exp1, exp2, exp3, expOp;
+        const mode = modeSelect.value;
+        if (isChallengeMode && challengeQuestions[challengeIndex]) {
+            const q = challengeQuestions[challengeIndex];
+            if (q.type === 'numberline') {
+                exp1 = q.a; exp2 = q.b; exp3 = q.result; expOp = q.op;
+            } else {
+                exp1 = q.a_tens * 10 + q.a_ones;
+                exp2 = q.b_tens * 10 + q.b_ones;
+                exp3 = q.result;
+                expOp = q.isAdd ? '+' : '-';
+            }
+        } else {
+            const isNumLine = (mode === 'numberline' || (mode === 'mixed' && counterWrapper.style.display === 'none'));
+            if (isNumLine) {
+                exp1 = nlStart; exp2 = nlStep; exp3 = nlEnd; expOp = nlOp;
+            } else {
+                const p = cntProblem;
+                exp1 = p.a_tens * 10 + p.a_ones;
+                exp2 = p.b_tens * 10 + p.b_ones;
+                exp3 = p.result;
+                expOp = p.isAdd ? '+' : '-';
+            }
+        }
+        return { exp1, exp2, exp3, expOp };
+    }
+
+    function advanceFocus() {
+        const inputs = [num1Input, opDisplay, num2Input, num3Input];
+        const idx = inputs.indexOf(activeInput);
+        if (idx < 0) return;
+        const { exp1, exp2, exp3, expOp } = getCurrentNumbers();
+        const expectedLengths = [String(exp1).length, 1, String(exp2).length, String(exp3).length];
+        const currentVal = activeInput.value;
+        if (currentVal.length >= expectedLengths[idx]) {
+            if (idx < 3) {
+                setActiveInput(inputs[idx + 1]);
+            }
+        }
+    }
+
+    function onInput(e) {
+        advanceFocus();
+    }
+
+    function onOpKeydown(e) {
+        const key = e.key;
+        if (key === '+' || key === '-') {
+            e.preventDefault();
+            opDisplay.value = key;
+            opDisplay.dispatchEvent(new Event('input'));
+            if (opDisplay.value.length >= 1) {
+                setActiveInput(num2Input);
+            }
+        } else if (key === 'Backspace' || key === 'Delete') {
+            // 允许
+        } else {
+            e.preventDefault();
+        }
+    }
+
+    function bindInputEvents() {
+        [num1Input, num2Input, num3Input].forEach(inp => {
+            inp.addEventListener('input', onInput);
+            inp.addEventListener('focus', () => setActiveInput(inp));
+        });
+        opDisplay.addEventListener('input', onInput);
+        opDisplay.addEventListener('focus', () => setActiveInput(opDisplay));
+        opDisplay.addEventListener('keydown', onOpKeydown);
+    }
+
+    bindInputEvents();
+
     // --- 计数器 ---
     let cntProblem = { a_tens:0, a_ones:0, b_tens:0, b_ones:0, result:0, isAdd:true };
     function generateCounterProblem() {
         const type = randInt(1, 2);
         let a_t, a_o, b_t, b_o, res, isAdd;
         if (type === 1) {
-            // 加法：下方显示加数，虚线框显示另一个加数，结果 = 两者之和
             do {
                 a_t = randInt(1, 9); a_o = randInt(1, 9);
                 const maxBT = 9 - a_t, maxBO = 9 - a_o;
@@ -683,7 +747,6 @@
             } while (a_t === 0 && a_o === 0);
             res = (a_t + b_t) * 10 + (a_o + b_o); isAdd = true;
         } else {
-            // 减法：下方显示差值（剩余部分），虚线框显示减数，被减数 = 差 + 减数
             let d_t, d_o, s_t, s_o;
             do {
                 d_t = randInt(0, 5); d_o = randInt(0, 5);
@@ -820,7 +883,7 @@
 
     function generateProblem() {
         messageBox.innerHTML = ''; messageBox.className = 'message-box';
-        [num1Input, num2Input, num3Input, opDisplay].forEach(inp => { inp.value = ''; inp.className = inp === opDisplay ? 'op-input' : 'input-box'; });
+        clearInputs();
         opDisplay.value = ''; setActiveInput(num1Input);
 
         const mode = modeSelect.value;
@@ -833,18 +896,25 @@
         else { counterWrapper.style.display = 'block'; canvasWrapper.style.display = 'none'; generateCounterProblem(); }
     }
 
+    function clearInputs() {
+        [num1Input, num2Input, num3Input, opDisplay].forEach(inp => {
+            inp.value = '';
+            inp.className = inp === opDisplay ? 'op-input' : 'input-box';
+        });
+    }
+
     // ============================================================
     // 2. 答题模式（挑战）状态
     // ============================================================
     let isChallengeMode = false;
-    let challengeUser = null;        // { class: '3班', name: '张三' }
+    let challengeUser = null;
     let challengeQuestions = [];
     let challengeIndex = 0;
     let challengeCorrect = 0;
     let challengeStartTime = null;
     let challengeTimerInterval = null;
     let challengeSeconds = 0;
-    let isAnswering = false;        // 当前题目是否已答
+    let isAnswering = false;
 
     const TOTAL_QUESTIONS = 5;
 
@@ -852,9 +922,7 @@
     // 3. 身份验证（白名单 API）- 已更新为 /all 接口
     // ============================================================
     function openAuthModal() {
-        if (isChallengeMode) {
-            return;
-        }
+        if (isChallengeMode) return;
         document.getElementById('authModal').classList.add('show');
         document.getElementById('authError').textContent = '';
         document.getElementById('nameInput').value = '';
@@ -889,9 +957,7 @@
             if (!resp.ok) throw new Error('网络请求失败');
             const data = await resp.json();
             const submissions = data.submissions || [];
-            const matched = submissions.some(item => {
-                return item.class === cls && item.name === name;
-            });
+            const matched = submissions.some(item => item.class === cls && item.name === name);
 
             if (!matched) {
                 errorEl.textContent = '❌ 未在白名单中找到匹配信息，请检查班级和姓名';
@@ -922,7 +988,6 @@
         userBadge.textContent = `${cls} · ${name}`;
         btnChallenge.disabled = true;
         btnChallenge.textContent = '⏳ 挑战中';
-
         modeSelect.disabled = true;
 
         challengeQuestions = [];
@@ -993,7 +1058,7 @@
         const q = challengeQuestions[index];
         if (!q) return;
 
-        [num1Input, num2Input, num3Input, opDisplay].forEach(inp => { inp.value = ''; inp.className = inp === opDisplay ? 'op-input' : 'input-box'; });
+        clearInputs();
         opDisplay.value = '';
         messageBox.innerHTML = ''; messageBox.className = 'message-box';
         isAnswering = false;
@@ -1033,8 +1098,10 @@
         timerDisplay.textContent = `${mins}:${secs}`;
     }
 
-    // --- 挑战模式下的验证 ---
+    let checkTimer = null;
+
     async function checkAnswer() {
+        if (checkTimer) return;
         if (!isChallengeMode) {
             legacyCheckAnswer();
             return;
@@ -1071,6 +1138,9 @@
 
         const isN1 = n1 === exp1, isN2 = n2 === exp2, isN3 = n3 === exp3, isOp = userOp === expOp;
 
+        btnCheck.disabled = true;
+        btnNext.disabled = true;
+
         if (isN1 && isN2 && isN3 && isOp) {
             messageBox.textContent = '✅ 回答正确！';
             messageBox.className = 'message-box';
@@ -1080,8 +1150,11 @@
             opDisplay.className = 'op-input correct';
             challengeCorrect++;
             isAnswering = true;
-            btnCheck.disabled = true;
-            btnNext.disabled = false;
+            checkTimer = setTimeout(() => {
+                checkTimer = null;
+                btnCheck.disabled = false;
+                nextQuestion();
+            }, 1000);
         } else {
             messageBox.textContent = '❌ 再检查一下，数字或符号错了吗？';
             messageBox.className = 'message-box error';
@@ -1089,6 +1162,15 @@
             if (!isN2) num2Input.className = 'input-box wrong';
             if (!isN3) num3Input.className = 'input-box wrong';
             if (!isOp) opDisplay.className = 'op-input wrong';
+            checkTimer = setTimeout(() => {
+                checkTimer = null;
+                clearInputs();
+                setActiveInput(num1Input);
+                btnCheck.disabled = false;
+                btnNext.disabled = false;
+                messageBox.innerHTML = '';
+                messageBox.className = 'message-box';
+            }, 1000);
         }
     }
 
@@ -1098,10 +1180,15 @@
             return;
         }
 
-        if (!isAnswering) {
+        if (!isAnswering && !checkTimer) {
             messageBox.textContent = '⚠️ 请先验证当前题目！';
             messageBox.className = 'message-box error';
             return;
+        }
+
+        if (checkTimer) {
+            clearTimeout(checkTimer);
+            checkTimer = null;
         }
 
         challengeIndex++;
@@ -1111,6 +1198,8 @@
         }
 
         showChallengeQuestion(challengeIndex);
+        btnCheck.disabled = false;
+        btnNext.disabled = true;
     }
 
     async function finishChallenge() {
@@ -1165,6 +1254,10 @@
             clearInterval(challengeTimerInterval);
             challengeTimerInterval = null;
         }
+        if (checkTimer) {
+            clearTimeout(checkTimer);
+            checkTimer = null;
+        }
         timerDisplay.textContent = '00:00';
         userBadge.textContent = '';
         btnChallenge.disabled = false;
@@ -1181,23 +1274,28 @@
     }
 
     // ============================================================
-    // 5. 键盘交互
+    // 5. 虚拟键盘交互
     // ============================================================
     function handleKeyPress(value) {
         if (value === '+' || value === '-') {
             if (opDisplay.value === '') {
                 opDisplay.value = value;
                 opDisplay.style.color = value === '+' ? '#e74c3c' : '#2980b9';
-                setActiveInput(num2Input);
+                opDisplay.dispatchEvent(new Event('input'));
+                if (opDisplay.value.length >= 1) {
+                    setActiveInput(num2Input);
+                }
             }
             return;
         }
         if (value === '⌫') {
             activeInput.value = activeInput.value.slice(0, -1);
+            activeInput.dispatchEvent(new Event('input'));
             return;
         }
         if (value === 'C') {
             activeInput.value = '';
+            activeInput.dispatchEvent(new Event('input'));
             return;
         }
         if (activeInput === opDisplay) {
@@ -1207,30 +1305,14 @@
         if (activeInput.value.length >= 6) return;
 
         activeInput.value += value;
-
-        let exp1 = 0, exp2 = 0;
-        const mode = modeSelect.value;
-        let isNumLine = (mode === 'numberline' || (mode === 'mixed' && counterWrapper.style.display === 'none'));
-        if (isNumLine) { exp1 = nlStart; exp2 = nlStep; }
-        else { exp1 = cntProblem.a_tens*10 + cntProblem.a_ones; exp2 = cntProblem.b_tens*10 + cntProblem.b_ones; }
-
-        if (isChallengeMode && challengeQuestions[challengeIndex]) {
-            const q = challengeQuestions[challengeIndex];
-            if (q.type === 'numberline') { exp1 = q.a; exp2 = q.b; }
-            else { exp1 = q.a_tens*10 + q.a_ones; exp2 = q.b_tens*10 + q.b_ones; }
-        }
-
-        if (activeInput === num1Input && activeInput.value.length === String(exp1).length) {
-            setActiveInput(opDisplay);
-        } else if (activeInput === num2Input && activeInput.value.length === String(exp2).length) {
-            setActiveInput(num3Input);
-        }
+        activeInput.dispatchEvent(new Event('input'));
     }
 
     // ============================================================
     // 6. 原有验证（普通模式）
     // ============================================================
     function legacyCheckAnswer() {
+        if (checkTimer) return;
         const n1 = parseInt(num1Input.value), n2 = parseInt(num2Input.value), n3 = parseInt(num3Input.value), userOp = opDisplay.value;
         [num1Input, num2Input, num3Input, opDisplay].forEach(inp => inp.className = inp===opDisplay?'op-input':'input-box');
         messageBox.className = 'message-box';
@@ -1245,17 +1327,22 @@
             return;
         }
 
-        let exp1, exp2, exp3, expOp;
-        const mode = modeSelect.value;
-        let isNumLine = (mode === 'numberline' || (mode === 'mixed' && counterWrapper.style.display === 'none'));
-        if (isNumLine) { exp1 = nlStart; exp2 = nlStep; exp3 = nlEnd; expOp = nlOp; }
-        else { const p = cntProblem; exp1 = p.a_tens*10 + p.a_ones; exp2 = p.b_tens*10 + p.b_ones; exp3 = p.result; expOp = p.isAdd ? '+' : '-'; }
+        const { exp1, exp2, exp3, expOp } = getCurrentNumbers();
 
         const isN1 = n1 === exp1, isN2 = n2 === exp2, isN3 = n3 === exp3, isOp = userOp === expOp;
+        btnCheck.disabled = true;
+        btnNext.disabled = true;
+
         if (isN1 && isN2 && isN3 && isOp) {
             messageBox.textContent = '🎉 完全正确！太棒啦！';
             num1Input.className = 'input-box correct'; num2Input.className = 'input-box correct';
             num3Input.className = 'input-box correct'; opDisplay.className = 'op-input correct';
+            checkTimer = setTimeout(() => {
+                checkTimer = null;
+                btnCheck.disabled = false;
+                btnNext.disabled = false;
+                generateProblem();
+            }, 1000);
         } else {
             messageBox.textContent = '❌ 再检查一下，数字或符号错了吗？';
             messageBox.className = 'message-box error';
@@ -1263,11 +1350,20 @@
             if (!isN2) num2Input.className = 'input-box wrong';
             if (!isN3) num3Input.className = 'input-box wrong';
             if (!isOp) opDisplay.className = 'op-input wrong';
+            checkTimer = setTimeout(() => {
+                checkTimer = null;
+                clearInputs();
+                setActiveInput(num1Input);
+                btnCheck.disabled = false;
+                btnNext.disabled = false;
+                messageBox.innerHTML = '';
+                messageBox.className = 'message-box';
+            }, 1000);
         }
     }
 
     // ============================================================
-    // 7. 排行榜
+    // 7. 排行榜（修改为显示 correct/total 和用时）
     // ============================================================
     async function fetchRank() {
         const rankList = document.getElementById('rankList');
@@ -1295,22 +1391,31 @@
                 return;
             }
 
-            todayItems.sort((a, b) => (b.score || 0) - (a.score || 0));
+            // 按得分排序（得分高者优先），若得分相同则用时短者优先
+            todayItems.sort((a, b) => {
+                const scoreA = a.score || 0;
+                const scoreB = b.score || 0;
+                if (scoreA !== scoreB) return scoreB - scoreA;
+                return (a.seconds || 0) - (b.seconds || 0);
+            });
 
             let html = '';
             todayItems.forEach((item, idx) => {
                 const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx+1}`;
                 const name = item.name || '未知';
                 const cls = item.class || '';
-                const score = item.score ?? 0;
-                const timeStr = item.submitted_at || item.timestamp || '';
-                const timeDisplay = timeStr ? timeStr.slice(11, 16) : '';
+                const correct = item.correct ?? 0;
+                const total = item.total ?? 5;
+                const seconds = item.seconds ?? 0;
+                const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+                const ss = String(seconds % 60).padStart(2, '0');
+                const timeStr = `${mm}:${ss}`;
                 html += `
                     <div class="rank-item">
                         <span class="rank-pos">${medal}</span>
                         <span class="rank-name">${cls} ${name}</span>
-                        <span class="rank-score">${score}分</span>
-                        <span class="rank-time">${timeDisplay}</span>
+                        <span class="rank-correct">${correct}/${total}</span>
+                        <span class="rank-time">${timeStr}</span>
                     </div>
                 `;
             });
@@ -1325,14 +1430,13 @@
     // 8. 初始化
     // ============================================================
     window.onload = () => {
-        [num1Input, num2Input, num3Input, opDisplay].forEach(inp => inp.onfocus = () => setActiveInput(inp));
+        [num1Input, num2Input, num3Input, opDisplay].forEach(inp => inp.removeAttribute('readonly'));
         modeSelect.value = 'mixed';
         switchMode();
         fetchRank();
         setInterval(fetchRank, 30000);
     };
 
-    // 暴露全局函数
     window.switchMode = switchMode;
     window.generateProblem = generateProblem;
     window.checkAnswer = checkAnswer;

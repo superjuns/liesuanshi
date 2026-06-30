@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📐🧮 数线图 & 计数器 列算式</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px 40px 40px 40px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            max-width: 550px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        .header-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+        .mode-selector {
+            padding: 8px 16px;
+            border: 2px solid #dcdfe6;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            background-color: #fafcfd;
+            outline: none;
+            cursor: pointer;
+            width: 200px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .mode-selector:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+
+        /* 动态内容容器 */
+        .dynamic-content {
+            background-color: #fafcfd;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            padding: 15px 0;
+            border: 1px solid #ecf0f1;
+            position: relative;
+            min-height: 280px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- 数线图样式 --- */
+        .canvas-wrapper {
+            width: 100%;
+            display: none; /* 默认隐藏 */
+        }
+        #numberLineCanvas {
+            width: 100%;
+            height: auto;
+            background: transparent;
+            display: block;
+        }
+
+        /* --- 计数器样式 --- */
+        .counter-wrapper {
+            width: 100%;
+            display: none; /* 默认隐藏 */
+        }
+        .counter-row {
+            display: flex;
+            justify-content: center;
+            gap: 70px;
+            padding: 10px 0;
+        }
+        .counter-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .rod-container {
+            position: relative;
+            height: 220px;
+            width: 80px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+        .rod {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 8px;
+            height: 100%;
+            background: #8B5A2B;
+            border-radius: 4px;
+            z-index: 1;
+        }
+        .bead-stack {
+            display: flex;
+            flex-direction: column-reverse;
+            width: 100%;
+            z-index: 2;
+            padding-bottom: 8px;
+            align-items: center;
+        }
+        .bead {
+            width: 28px;
+            height: 14px;
+            background: radial-gradient(circle at 30% 30%, #ffb347, #f58f20);
+            border-radius: 50%;
+            margin: 0 auto 3px auto;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+            border: 1px solid #e08010;
+        }
+        .action-indicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 2px dashed #3498db;
+            background: transparent;
+            min-width: 30px;
+            min-height: 30px;
+            gap: 2px;
+        }
+        .action-add { border-color: #3498db; }
+        .action-sub { border-color: #e74c3c; }
+        .indicator-bead {
+            width: 28px;
+            height: 14px;
+            background: radial-gradient(circle at 30% 30%, #ffb347, #f58f20);
+            border-radius: 50%;
+            border: 1px solid #e08010;
+            flex-shrink: 0;
+        }
+        .arrow-wrap {
+            position: absolute;
+            right: -38px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .arrow-line {
+            width: 3px;
+            height: 22px;
+            border-radius: 2px;
+        }
+        .arrow-head {
+            width: 0;
+            height: 0;
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+        }
+        .arrow-up .arrow-line { background: #3498db; }
+        .arrow-up .arrow-head {
+            border-bottom: 12px solid #3498db;
+            margin-bottom: -3px;
+            order: -1;
+        }
+        .arrow-down .arrow-line { background: #e74c3c; }
+        .arrow-down .arrow-head {
+            border-top: 12px solid #e74c3c;
+            margin-top: -3px;
+            order: 1;
+        }
+        .label-box {
+            background: #fdf5e6;
+            border: 2px solid #d2b48c;
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* --- 共享输入框与按钮样式 --- */
+        .equation-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .input-box, .op-input {
+            border: 3px solid #dcdfe6;
+            background-color: #fff;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: #2c3e50;
+            outline: none;
+            text-align: center;
+            font-size: 28px;
+        }
+        .input-box {
+            width: 65px;
+            height: 65px;
+            border-radius: 16px;
+        }
+        .op-input {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            caret-color: transparent;
+        }
+        .input-box:focus, .op-input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        .input-box.active, .op-input.active {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.4);
+        }
+        .input-box.correct, .op-input.correct {
+            border-color: #2ecc71;
+            background-color: #eafaf1;
+        }
+        .input-box.wrong, .op-input.wrong {
+            border-color: #e74c3c;
+            background-color: #fdedec;
+        }
+        .eq-symbol {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        button {
+            padding: 12px 35px;
+            font-size: 18px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+        }
+        .btn-check {
+            background-color: #3498db;
+            color: white;
+            box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);
+        }
+        .btn-check:hover { background-color: #2980b9; transform: translateY(-2px); }
+        .btn-next {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+        }
+        .btn-next:hover { background-color: #dde1e3; transform: translateY(-2px); }
+
+        .message-box {
+            margin-top: 15px;
+            height: 30px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #27ae60;
+        }
+        .message-box.error { color: #e74c3c; }
+
+        /* --- 虚拟键盘样式 --- */
+        .keypad-container {
+            margin: 20px auto 0 auto;
+            max-width: 360px;
+            width: 100%;
+        }
+        .keypad-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .key-btn {
+            height: 55px;
+            font-size: 24px;
+            font-weight: bold;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            cursor: pointer;
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            transition: all 0.1s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+        .key-btn:active {
+            background-color: #e2e6ea;
+            transform: scale(0.95);
+        }
+        .key-btn.op-btn {
+            background-color: #fff;
+            color: #e74c3c;
+        }
+        .key-btn.op-btn.minus { color: #2980b9; }
+        .key-btn.fn-btn {
+            background-color: #f1f2f6;
+            color: #7f8c8d;
+        }
+        .key-btn.span-2 { grid-column: span 2; }
+
+        @media (max-width: 480px) {
+            .container { padding: 20px 15px; }
+            .counter-row { gap: 40px; }
+            .rod-container { height: 180px; width: 60px; }
+            .bead, .indicator-bead { width: 22px; height: 11px; margin: 0 auto 2px auto; }
+            .arrow-wrap { right: -30px; }
+            .arrow-line { height: 18px; }
+            .arrow-up .arrow-head { border-bottom-width: 10px; }
+            .arrow-down .arrow-head { border-top-width: 10px; }
+            .input-box, .op-input { width: 50px; height: 50px; font-size: 22px; }
+            .equation-container { gap: 8px; }
+            .key-btn { height: 45px; font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-area">
+        <div class="title">📐🧮 选择模式列算式</div>
+        <select id="modeSelect" class="mode-selector" onchange="switchMode()">
+            <option value="mixed">🎲 随机混合模式</option>
+            <option value="counter">🧮 计数器模式</option>
+            <option value="numberline">📐 数线图模式</option>
+        </select>
+    </div>
+    
+    <!-- 动态内容区 -->
+    <div class="dynamic-content" id="dynamicContent">
+        <!-- 计数器内容 -->
+        <div class="counter-wrapper" id="counterWrapper">
+            <div class="counter-row" id="counterRow">
+                <!-- 由 JavaScript 动态生成 -->
+            </div>
+        </div>
+        <!-- 数线图内容 -->
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <canvas id="numberLineCanvas" width="800" height="280"></canvas>
+        </div>
+    </div>
+
+    <!-- 共享输入区 -->
+    <div class="equation-container">
+        <input type="number" id="num1" class="input-box" placeholder="?" readonly>
+        <input type="text" id="opDisplay" class="op-input" placeholder="?" readonly>
+        <input type="number" id="num2" class="input-box" placeholder="?" readonly>
+        <span class="eq-symbol">=</span>
+        <input type="number" id="num3" class="input-box" placeholder="?" readonly>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn-check" onclick="checkAnswer()">✅ 验证答案</button>
+        <button class="btn-next" onclick="generateProblem()">🔄 下一题</button>
+    </div>
+    <div id="messageBox" class="message-box"></div>
+
+    <div class="keypad-container">
+        <div class="keypad-grid">
+            <button class="key-btn" onclick="handleKeyPress('1')">1</button>
+            <button class="key-btn" onclick="handleKeyPress('2')">2</button>
+            <button class="key-btn" onclick="handleKeyPress('3')">3</button>
+            <button class="key-btn op-btn" onclick="handleKeyPress('+')">+</button>
+            <button class="key-btn" onclick="handleKeyPress('4')">4</button>
+            <button class="key-btn" onclick="handleKeyPress('5')">5</button>
+            <button class="key-btn" onclick="handleKeyPress('6')">6</button>
+            <button class="key-btn op-btn minus" onclick="handleKeyPress('-')">-</button>
+            <button class="key-btn" onclick="handleKeyPress('7')">7</button>
+            <button class="key-btn" onclick="handleKeyPress('8')">8</button>
+            <button class="key-btn" onclick="handleKeyPress('9')">9</button>
+            <button class="key-btn fn-btn" onclick="handleKeyPress('⌫')">⌫</button>
+            <button class="key-btn span-2" onclick="handleKeyPress('0')">0</button>
+            <button class="key-btn span-2 fn-btn" onclick="handleKeyPress('C')">C</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- 全局状态与DOM ---
+    const modeSelect = document.getElementById('modeSelect');
+    const counterWrapper = document.getElementById('counterWrapper');
+    const canvasWrapper = document.getElementById('canvasWrapper');
+    const counterRow = document.getElementById('counterRow');
+    const canvas = document.getElementById('numberLineCanvas');
+    const ctx = canvas.getContext('2d');
+    const num1Input = document.getElementById('num1');
+    const num2Input = document.getElementById('num2');
+    const num3Input = document.getElementById('num3');
+    const opDisplay = document.getElementById('opDisplay');
+    const messageBox = document.getElementById('messageBox');
+    let activeInput = num1Input;
+
+    // --- 数学辅助 ---
+    function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+    // --- 输入框焦点管理 ---
+    function setActiveInput(inp) {
+        activeInput = inp;
+        [num1Input, num2Input, num3Input, opDisplay].forEach(el => el.classList.remove('active'));
+        activeInput.classList.add('active');
+        activeInput.focus();
+    }
+
+    // ==========================================
+    // 1. 数据模型 & 生成逻辑
+    // ==========================================
+    // 计数器数据
+    let cntProblem = { a_tens:0, a_ones:0, b_tens:0, b_ones:0, result:0, isAdd:true };
+    // 数线图数据
+    let nlStart = 0, nlStep = 0, nlEnd = 0, nlOp = '+';
+
+    function generateCounterProblem() {
+        const type = randInt(1, 2);
+        let a_t, a_o, b_t, b_o, res, isAdd;
+        if (type === 1) { // 不进位加法
+            do {
+                a_t = randInt(1, 9); a_o = randInt(1, 9);
+                const maxBT = 9 - a_t, maxBO = 9 - a_o;
+                do { b_t = randInt(0, maxBT); b_o = randInt(0, maxBO); } while (b_t === 0 && b_o === 0);
+            } while (a_t === 0 && a_o === 0);
+            res = (a_t + b_t) * 10 + (a_o + b_o); isAdd = true;
+        } else { // 不退位减法
+            do {
+                a_t = randInt(1, 5); a_o = randInt(1, 5);
+                const maxBT = Math.min(a_t, 9 - a_t), maxBO = Math.min(a_o, 9 - a_o);
+                do { b_t = randInt(0, maxBT); b_o = randInt(0, maxBO); } while (b_t === 0 && b_o === 0);
+            } while (a_t === 0 && a_o === 0);
+            res = (a_t - b_t) * 10 + (a_o - b_o); isAdd = false;
+        }
+        cntProblem = { a_tens:a_t, a_ones:a_o, b_tens:b_t, b_ones:b_o, result:res, isAdd:isAdd };
+        renderCounter();
+    }
+
+    function renderCounter() {
+        const p = cntProblem;
+        const tensBeads = '<div class="bead"></div>'.repeat(p.a_tens);
+        const onesBeads = '<div class="bead"></div>'.repeat(p.a_ones);
+        const genInd = (val, isAdd) => {
+            if (val <= 0) return '';
+            const action = isAdd ? 'action-add' : 'action-sub';
+            const arrow = isAdd ? 'arrow-up' : 'arrow-down';
+            return `<div class="action-indicator ${action}">${'<div class="indicator-bead"></div>'.repeat(val)}<div class="arrow-wrap ${arrow}"><div class="arrow-line"></div><div class="arrow-head"></div></div></div>`;
+        };
+        counterRow.innerHTML = `
+            <div class="counter-col"><div class="rod-container"><div class="rod"></div><div class="bead-stack">${tensBeads}</div>${genInd(p.b_tens, p.isAdd)}</div><div class="label-box">十位</div></div>
+            <div class="counter-col"><div class="rod-container"><div class="rod"></div><div class="bead-stack">${onesBeads}</div>${genInd(p.b_ones, p.isAdd)}</div><div class="label-box">个位</div></div>
+        `;
+    }
+
+    function generateNumberLineProblem() {
+        const type = randInt(1, 4);
+        let a, b, op;
+        if (type === 1) { // 不进位加
+            do {
+                let tA=randInt(0,9), tB=randInt(0,9-tA), oA=randInt(0,9), oB=randInt(0,9-oA);
+                a = tA*10+oA; b = tB*10+oB;
+            } while (a+b > 100 || b === 0);
+            op = '+';
+        } else if (type === 2) { // 不退位减
+            do {
+                let tA=randInt(0,9), tB=randInt(0,tA+1), oA=randInt(0,9), oB=randInt(0,oA+1);
+                a = tA*10+oA; b = tB*10+oB;
+            } while (a === 0 || b === 0 || a-b < 0);
+            op = '-';
+        } else if (type === 3) { // 20进位加
+            do {
+                a = randInt(2, 9); b = randInt(2, 9);
+            } while (a+b <= 10 || a+b > 20);
+            op = '+';
+        } else { // 20退位减
+            do {
+                a = randInt(11, 19);
+                let oA = a % 10;
+                b = randInt(oA+1, 9);
+            } while (a-b < 0 || a-b >= 10 || b === 0);
+            op = '-';
+        }
+        nlStart = a; nlStep = b; nlEnd = (op === '+') ? a+b : a-b; nlOp = op;
+        drawNumberLine();
+    }
+
+    // --- 数线图 Canvas 绘图逻辑 ---
+    function roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x+r, y); ctx.arcTo(x+w, y, x+w, y+h, r); ctx.arcTo(x+w, y+h, x, y+h, r);
+        ctx.arcTo(x, y+h, x, y, r); ctx.arcTo(x, y, x+w, y, r); ctx.closePath();
+    }
+    function drawNumberLine() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const minVal = Math.min(nlStart, nlEnd), maxVal = Math.max(nlStart, nlEnd);
+        const range = maxVal - minVal;
+        let gridStep = (range > 40) ? 10 : (range > 20) ? 5 : 1;
+        let gridStart = Math.floor(minVal / gridStep) * gridStep - gridStep;
+        let gridEnd = Math.ceil(maxVal / gridStep) * gridStep + gridStep;
+        const mLeft = 80, mRight = 80, drawW = canvas.width - mLeft - mRight, baseY = 160;
+        const getX = (v) => mLeft + ((v - gridStart) / (gridEnd - gridStart)) * drawW;
+
+        ctx.strokeStyle = '#aab2bd'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(mLeft-10, baseY); ctx.lineTo(canvas.width-mRight+10, baseY); ctx.stroke();
+        ctx.font = 'bold 20px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#34495e';
+        for (let i = gridStart; i <= gridEnd; i += gridStep) {
+            const x = getX(i);
+            ctx.beginPath(); ctx.moveTo(x, baseY); ctx.lineTo(x, baseY+14); ctx.stroke();
+            ctx.fillText(i, x, baseY+18);
+        }
+
+        const sx = getX(nlStart), ex = getX(nlEnd), color = nlOp==='+' ? '#e74c3c' : '#2980b9', cpY = 75;
+        const drawStep = (x1, x2, stepVal, prefix) => {
+            const cpX = (x1+x2)/2;
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 3;
+            ctx.moveTo(x1, baseY-12); ctx.quadraticCurveTo(cpX, cpY, x2, baseY-12); ctx.stroke();
+            const sz = 7; ctx.fillStyle = color; ctx.beginPath();
+            if (x2 > x1) { ctx.moveTo(x2, baseY-12-sz); ctx.lineTo(x2+sz, baseY-12); ctx.lineTo(x2, baseY-12+sz); }
+            else { ctx.moveTo(x2, baseY-12-sz); ctx.lineTo(x2-sz, baseY-12); ctx.lineTo(x2, baseY-12+sz); }
+            ctx.fill();
+            ctx.font = 'bold 26px Arial'; ctx.textBaseline = 'bottom'; ctx.fillText(prefix+stepVal, cpX, cpY-10);
+        };
+
+        const absStep = Math.abs(nlStep);
+        const isTwoStep = (nlOp === '+' && nlStart < 10 && nlEnd > 10) || (nlOp === '-' && nlStart > 10 && nlEnd < 10);
+        let useLinear = false;
+        if (nlStart <= 20 && nlEnd <= 20 && absStep > 1 && absStep <= 7) useLinear = Math.random() > 0.5;
+
+        if (useLinear) {
+            const sign = nlOp === '+' ? '+' : '-', dir = nlOp === '+' ? 1 : -1;
+            for (let i=1; i<=absStep; i++) drawStep(getX(nlStart+(i-1)*dir), getX(nlStart+i*dir), 1, sign);
+        } else if (isTwoStep) {
+            const midX = getX(10);
+            if (nlOp === '+') { drawStep(sx, midX, 10-nlStart, '+'); drawStep(midX, ex, nlEnd-10, '+'); }
+            else { drawStep(sx, midX, nlStart-10, '-'); drawStep(midX, ex, 10-nlEnd, '-'); }
+        } else {
+            drawStep(sx, ex, absStep, nlOp === '+' ? '+' : '-');
+        }
+
+        ctx.beginPath(); ctx.arc(sx, baseY-12, 6, 0, Math.PI*2); ctx.strokeStyle = color; ctx.lineWidth=3; ctx.stroke(); ctx.fillStyle='#fff'; ctx.fill();
+        if (nlStart % gridStep !== 0) {
+            const label = String(nlStart); ctx.font='bold 18px Arial'; const tw = ctx.measureText(label).width;
+            const lx = sx - (tw+20)/2, ly = baseY+40;
+            ctx.beginPath(); ctx.strokeStyle='#bdc3c7'; ctx.setLineDash([4,4]); ctx.lineWidth=1.5;
+            ctx.moveTo(sx, baseY+14); ctx.lineTo(sx, ly); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle='#fff'; roundRect(ctx, lx, ly, tw+20, 30, 8); ctx.fill();
+            ctx.strokeStyle = color; ctx.lineWidth=2; roundRect(ctx, lx, ly, tw+20, 30, 8); ctx.stroke();
+            ctx.fillStyle=color; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(label, sx, ly+15);
+        }
+    }
+
+    // ==========================================
+    // 2. 模式切换 & 出题主控
+    // ==========================================
+    function switchMode() {
+        const mode = modeSelect.value;
+        if (mode === 'numberline') {
+            counterWrapper.style.display = 'none';
+            canvasWrapper.style.display = 'block';
+        } else if (mode === 'counter') {
+            counterWrapper.style.display = 'block';
+            canvasWrapper.style.display = 'none';
+        } else { // mixed
+            counterWrapper.style.display = 'block';
+            canvasWrapper.style.display = 'block';
+        }
+        generateProblem();
+    }
+
+    function generateProblem() {
+        // 重置UI
+        messageBox.innerHTML = ''; messageBox.className = 'message-box';
+        [num1Input, num2Input, num3Input, opDisplay].forEach(inp => {
+            inp.value = ''; inp.className = inp === opDisplay ? 'op-input' : 'input-box'; inp.style.color = '#2c3e50';
+        });
+        opDisplay.value = '';
+        setActiveInput(num1Input);
+
+        const mode = modeSelect.value;
+        let useNumberLine = false;
+        if (mode === 'numberline') useNumberLine = true;
+        else if (mode === 'counter') useNumberLine = false;
+        else useNumberLine = Math.random() > 0.5; // 混合模式随机
+
+        if (useNumberLine) {
+            counterWrapper.style.display = 'none';
+            canvasWrapper.style.display = 'block';
+            generateNumberLineProblem();
+        } else {
+            counterWrapper.style.display = 'block';
+            canvasWrapper.style.display = 'none';
+            generateCounterProblem();
+        }
+    }
+
+    // ==========================================
+    // 3. 键盘输入与自动跳转
+    // ==========================================
+    function handleKeyPress(value) {
+        if (value === '+' || value === '-') {
+            if (opDisplay.value === '') {
+                opDisplay.value = value;
+                opDisplay.style.color = value === '+' ? '#e74c3c' : '#2980b9';
+                setActiveInput(num2Input);
+            }
+            return;
+        }
+        if (value === '⌫') { activeInput.value = activeInput.value.slice(0, -1); return; }
+        if (value === 'C') { activeInput.value = ''; return; }
+        if (activeInput === opDisplay) { setActiveInput(num1Input); }
+        
+        activeInput.value += value;
+
+        // 自动跳转预估值计算
+        let exp1 = 0, exp2 = 0;
+        const mode = modeSelect.value;
+        let isNumLine = (mode === 'numberline' || (mode === 'mixed' && counterWrapper.style.display === 'none'));
+        if (isNumLine) { exp1 = nlStart; exp2 = nlStep; }
+        else { exp1 = cntProblem.a_tens*10 + cntProblem.a_ones; exp2 = cntProblem.b_tens*10 + cntProblem.b_ones; }
+
+        if (activeInput === num1Input && activeInput.value.length === String(exp1).length) {
+            setActiveInput(opDisplay);
+        } else if (activeInput === num2Input && activeInput.value.length === String(exp2).length) {
+            setActiveInput(num3Input);
+        }
+    }
+
+    // ==========================================
+    // 4. 验证答案
+    // ==========================================
+    function checkAnswer() {
+        const n1 = parseInt(num1Input.value), n2 = parseInt(num2Input.value), n3 = parseInt(num3Input.value);
+        const userOp = opDisplay.value;
+        [num1Input, num2Input, num3Input, opDisplay].forEach(inp => inp.className = inp===opDisplay?'op-input':'input-box');
+        messageBox.className = 'message-box';
+
+        if (isNaN(n1) || isNaN(n2) || isNaN(n3) || userOp === '') {
+            messageBox.textContent = '⚠️ 请把数字和运算符都填满哦！'; messageBox.className = 'message-box error';
+            if (isNaN(n1)) num1Input.className = 'input-box wrong';
+            if (isNaN(n2)) num2Input.className = 'input-box wrong';
+            if (isNaN(n3)) num3Input.className = 'input-box wrong';
+            if (userOp === '') opDisplay.className = 'op-input wrong';
+            return;
+        }
+
+        let exp1, exp2, exp3, expOp;
+        const mode = modeSelect.value;
+        let isNumLine = (mode === 'numberline' || (mode === 'mixed' && counterWrapper.style.display === 'none'));
+
+        if (isNumLine) { exp1 = nlStart; exp2 = nlStep; exp3 = nlEnd; expOp = nlOp; }
+        else { const p = cntProblem; exp1 = p.a_tens*10 + p.a_ones; exp2 = p.b_tens*10 + p.b_ones; exp3 = p.result; expOp = p.isAdd ? '+' : '-'; }
+
+        const isN1 = n1 === exp1, isN2 = n2 === exp2, isN3 = n3 === exp3, isOp = userOp === expOp;
+        if (isN1 && isN2 && isN3 && isOp) {
+            messageBox.textContent = '🎉 完全正确！太棒啦！';
+            num1Input.className = 'input-box correct'; num2Input.className = 'input-box correct';
+            num3Input.className = 'input-box correct'; opDisplay.className = 'op-input correct';
+        } else {
+            messageBox.textContent = '❌ 再检查一下，数字或符号错了吗？'; messageBox.className = 'message-box error';
+            if (!isN1) num1Input.className = 'input-box wrong';
+            if (!isN2) num2Input.className = 'input-box wrong';
+            if (!isN3) num3Input.className = 'input-box wrong';
+            if (!isOp) opDisplay.className = 'op-input wrong';
+        }
+    }
+
+    // --- 初始化 ---
+    window.onload = () => {
+        [num1Input, num2Input, num3Input, opDisplay].forEach(inp => inp.onfocus = () => setActiveInput(inp));
+        // 强制设置为混合模式开始
+        modeSelect.value = 'mixed';
+        switchMode(); 
+    };
+</script>
+</body>
+</html>

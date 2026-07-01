@@ -814,7 +814,6 @@
         const getX = (v) => mLeft + ((v - gridStart) / (gridEnd - gridStart)) * drawW;
 
         ctx.strokeStyle = '#aab2bd'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(mLeft-10, baseY); ctx.lineTo(canvas.width-mRight+10, baseY); ctx.stroke();
-        // 坐标轴标签字体 24px
         ctx.font = 'bold 24px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#34495e';
         for (let i = gridStart; i <= gridEnd; i += gridStep) {
             const x = getX(i);
@@ -831,7 +830,6 @@
             if (x2 > x1) { ctx.moveTo(x2, baseY-10-sz); ctx.lineTo(x2+sz, baseY-10); ctx.lineTo(x2, baseY-10+sz); }
             else { ctx.moveTo(x2, baseY-10-sz); ctx.lineTo(x2-sz, baseY-10); ctx.lineTo(x2, baseY-10+sz); }
             ctx.fill();
-            // 步长标签 32px
             ctx.font = 'bold 32px Arial'; ctx.textBaseline = 'bottom';
             ctx.fillText(prefix+stepVal, cpX, cpY-10);
         };
@@ -851,7 +849,6 @@
             drawStep(sx, ex, absStep, nlOp === '+' ? '+' : '-');
         }
         ctx.beginPath(); ctx.arc(sx, baseY-10, 5, 0, Math.PI*2); ctx.strokeStyle = color; ctx.lineWidth=2; ctx.stroke(); ctx.fillStyle='#fff'; ctx.fill();
-        // 起点标签 22px
         if (nlStart % gridStep !== 0) {
             const label = String(nlStart); ctx.font='bold 22px Arial'; const tw = ctx.measureText(label).width;
             const lx = sx - (tw+20)/2, ly = baseY+36;
@@ -1357,7 +1354,7 @@
     }
 
     // ============================================================
-    // 7. 排行榜
+    // 7. 排行榜（仅显示每个学生的最佳成绩）
     // ============================================================
     async function fetchRank() {
         const rankList = document.getElementById('rankList');
@@ -1385,7 +1382,25 @@
                 return;
             }
 
-            todayItems.sort((a, b) => {
+            // --- 按 (class, name) 分组，保留最佳成绩（score 最高，score 相同则 seconds 最小）---
+            const bestMap = new Map();
+            todayItems.forEach(item => {
+                const key = `${item.class}|${item.name}`;
+                const existing = bestMap.get(key);
+                if (!existing) {
+                    bestMap.set(key, item);
+                } else {
+                    const scoreA = existing.score || 0;
+                    const scoreB = item.score || 0;
+                    if (scoreB > scoreA || (scoreB === scoreA && (item.seconds || 0) < (existing.seconds || 0))) {
+                        bestMap.set(key, item);
+                    }
+                }
+            });
+            const uniqueItems = Array.from(bestMap.values());
+
+            // 按 score 降序、seconds 升序排序
+            uniqueItems.sort((a, b) => {
                 const scoreA = a.score || 0;
                 const scoreB = b.score || 0;
                 if (scoreA !== scoreB) return scoreB - scoreA;
@@ -1393,7 +1408,7 @@
             });
 
             let html = '';
-            todayItems.forEach((item, idx) => {
+            uniqueItems.forEach((item, idx) => {
                 const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx+1}`;
                 const name = item.name || '未知';
                 const cls = item.class || '';

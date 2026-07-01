@@ -1265,7 +1265,7 @@
     }
 
     // ============================================================
-    // 5. 虚拟键盘交互
+    // 5. 虚拟键盘交互（含跨格删除）
     // ============================================================
     function handleKeyPress(value) {
         if (value === '+' || value === '-') {
@@ -1280,8 +1280,27 @@
             return;
         }
         if (value === '⌫') {
-            activeInput.value = activeInput.value.slice(0, -1);
-            activeInput.dispatchEvent(new Event('input'));
+            const inputs = [num1Input, opDisplay, num2Input, num3Input];
+            let idx = inputs.indexOf(activeInput);
+            if (idx === -1) return;
+            // 如果当前框有内容，直接删除当前框的最后一个字符
+            if (activeInput.value.length > 0) {
+                activeInput.value = activeInput.value.slice(0, -1);
+                activeInput.dispatchEvent(new Event('input'));
+                return;
+            }
+            // 当前框为空，向前寻找有内容的框
+            let found = false;
+            for (let i = idx - 1; i >= 0; i--) {
+                if (inputs[i].value.length > 0) {
+                    inputs[i].value = inputs[i].value.slice(0, -1);
+                    inputs[i].dispatchEvent(new Event('input'));
+                    setActiveInput(inputs[i]);
+                    found = true;
+                    break;
+                }
+            }
+            // 如果所有前面的框都为空，不做任何操作
             return;
         }
         if (value === 'C') {
@@ -1382,7 +1401,7 @@
                 return;
             }
 
-            // --- 按 (class, name) 分组，保留最佳成绩（score 最高，score 相同则 seconds 最小）---
+            // 按 (class, name) 分组，保留最佳成绩
             const bestMap = new Map();
             todayItems.forEach(item => {
                 const key = `${item.class}|${item.name}`;
@@ -1399,7 +1418,6 @@
             });
             const uniqueItems = Array.from(bestMap.values());
 
-            // 按 score 降序、seconds 升序排序
             uniqueItems.sort((a, b) => {
                 const scoreA = a.score || 0;
                 const scoreB = b.score || 0;

@@ -1375,7 +1375,13 @@
     // ============================================================
     // 7. 排行榜（仅显示每个学生的最佳成绩）
     // ============================================================
-    async function fetchRank() {
+    async     function getBeijingTodayStr() {
+        var d = new Date();
+        d.setTime(d.getTime() + 8 * 3600 * 1000);
+        return d.toISOString().slice(0, 10);
+    }
+
+function fetchRank() {
         const rankList = document.getElementById('rankList');
         rankList.innerHTML = '<div class="rank-empty">加载中...</div>';
 
@@ -1390,7 +1396,7 @@
                 return;
             }
 
-            const today = new Date().toISOString().slice(0, 10);
+            const today = getBeijingTodayStr();
             const todayItems = submissions.filter(item => {
                 const dateStr = item.submitted_at || item.timestamp || '';
                 return dateStr.startsWith(today);

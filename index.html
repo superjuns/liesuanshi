@@ -1375,13 +1375,13 @@
     // ============================================================
     // 7. 排行榜（仅显示每个学生的最佳成绩）
     // ============================================================
-    async     function getBeijingTodayStr() {
+        function getBeijingTodayStr() {
         var d = new Date();
         d.setTime(d.getTime() + 8 * 3600 * 1000);
         return d.toISOString().slice(0, 10);
     }
 
-function fetchRank() {
+    async function fetchRank() {
         const rankList = document.getElementById('rankList');
         rankList.innerHTML = '<div class="rank-empty">加载中...</div>';
 

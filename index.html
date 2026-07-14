@@ -943,7 +943,7 @@
     }
 
     function openAuthModal() {
-        if (isChallengeMode) return;
+        if (isChallengeMode) { resetChallengeMode(); return; }
         // 如果已有登录信息，直接开始挑战
         const savedCls = localStorage.getItem('liesuanshi_class');
         const savedName = localStorage.getItem('liesuanshi_name');
@@ -1019,8 +1019,8 @@
         challengeSeconds = 0;
         isAnswering = false;
         userBadge.textContent = `${cls} · ${name}`;
-        btnChallenge.disabled = true;
-        btnChallenge.textContent = '⏳ 挑战中';
+        btnChallenge.disabled = false;
+        btnChallenge.textContent = '⏹ 结束挑战';
         modeSelect.disabled = true;
 
         challengeQuestions = [];

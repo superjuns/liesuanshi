@@ -912,8 +912,45 @@
     // ============================================================
     // 3. 身份验证
     // ============================================================
+    // 工具函数
+    function getUrlParam(name) {
+        return new URLSearchParams(window.location.search).get(name) || '';
+    }
+    function normStr(s) {
+        return String(s || '').replace(/班/g, '').replace(/\s/g, '').toLowerCase();
+    }
+
+    // URL参数自动登录（平台跳转时免输入）
+    async function tryAutoLoginFromUrl() {
+        const cls = getUrlParam('class') || getUrlParam('cls') || getUrlParam('班级');
+        const name = getUrlParam('name') || getUrlParam('姓名');
+        if (!cls || !name) return false;
+        const normCls = /^\d+$/.test(cls) ? cls + '班' : cls;
+        try {
+            const resp = await fetch('https://wzkjgz.site/api/5tmbx2o6rg/all');
+            if (!resp.ok) return false;
+            const data = await resp.json();
+            const submissions = data.submissions || [];
+            const matched = submissions.some(item =>
+                normStr(item.class || '') === normStr(normCls) &&
+                normStr(item.name || '') === normStr(name)
+            );
+            if (!matched) return false;
+            localStorage.setItem('liesuanshi_class', normCls);
+            localStorage.setItem('liesuanshi_name', name);
+            return true;
+        } catch (e) { return false; }
+    }
+
     function openAuthModal() {
         if (isChallengeMode) return;
+        // 如果已有登录信息，直接开始挑战
+        const savedCls = localStorage.getItem('liesuanshi_class');
+        const savedName = localStorage.getItem('liesuanshi_name');
+        if (savedCls && savedName) {
+            startChallenge(savedCls, savedName);
+            return;
+        }
         document.getElementById('authModal').classList.add('show');
         document.getElementById('authError').textContent = '';
         document.getElementById('nameInput').value = '';
@@ -948,7 +985,10 @@
             if (!resp.ok) throw new Error('网络请求失败');
             const data = await resp.json();
             const submissions = data.submissions || [];
-            const matched = submissions.some(item => item.class === cls && item.name === name);
+            const matched = submissions.some(item =>
+                normStr(item.class || '') === normStr(cls) &&
+                normStr(item.name || '') === normStr(name)
+            );
 
             if (!matched) {
                 errorEl.textContent = '❌ 未在白名单中找到匹配信息，请检查班级和姓名';
@@ -957,6 +997,8 @@
             }
 
             errorEl.textContent = '';
+            localStorage.setItem('liesuanshi_class', cls);
+            localStorage.setItem('liesuanshi_name', name);
             closeAuthModal();
             startChallenge(cls, name);
 
@@ -1478,6 +1520,9 @@
     window.confirmAuth = confirmAuth;
     window.fetchRank = fetchRank;
     window.closeResult = closeResult;
+
+    // URL参数自动登录
+    tryAutoLoginFromUrl();
 </script>
 </body>
 </html>

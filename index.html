@@ -629,6 +629,23 @@
 </div>
 
 <script>
+// === Supabase 配置（自动生成）===
+const SUPABASE_KEY = 'sb_publishable_EAfnJgOY7VsXPdZkEcrvBA_0qkNGlyD';
+const _origFetch = window.fetch;
+window.fetch = function(url, options) {
+    options = options || {};
+    var u = (typeof url === 'string') ? url : (url && url.url) || '';
+    if (u.indexOf('bjugehxenrvaqtodjkbc.supabase.co') !== -1) {
+        options.headers = Object.assign({}, options.headers || {}, {
+            'apikey': SUPABASE_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_KEY,
+            'Content-Type': 'application/json'
+        });
+    }
+    return _origFetch.call(this, url, options);
+};
+// === Supabase 配置结束 ===
+
     // ============================================================
     // 1. 核心逻辑
     // ============================================================
@@ -927,10 +944,10 @@
         if (!cls || !name) return false;
         const normCls = /^\d+$/.test(cls) ? cls + '班' : cls;
         try {
-            const resp = await fetch('https://wzkjgz.site/api/5tmbx2o6rg/all');
+            const resp = await fetch('https://bjugehxenrvaqtodjkbc.supabase.co/rest/v1/whitelist?select=*');
             if (!resp.ok) return false;
             const data = await resp.json();
-            const submissions = data.submissions || [];
+            const submissions = data || [];
             const matched = submissions.some(item =>
                 normStr(item.class || '') === normStr(normCls) &&
                 normStr(item.name || '') === normStr(name)
@@ -981,10 +998,10 @@
         errorEl.textContent = '⏳ 验证中...';
 
         try {
-            const resp = await fetch('https://wzkjgz.site/api/5tmbx2o6rg/all');
+            const resp = await fetch('https://bjugehxenrvaqtodjkbc.supabase.co/rest/v1/whitelist?select=*');
             if (!resp.ok) throw new Error('网络请求失败');
             const data = await resp.json();
-            const submissions = data.submissions || [];
+            const submissions = data || [];
             const matched = submissions.some(item =>
                 normStr(item.class || '') === normStr(cls) &&
                 normStr(item.name || '') === normStr(name)
@@ -1262,7 +1279,7 @@
                 seconds: elapsed,
                 submitted_at: new Date().toISOString()
             };
-            await fetch('https://wzkjgz.site/api/x0joelczoy', {
+            await fetch('https://bjugehxenrvaqtodjkbc.supabase.co/rest/v1/scores_liesuanshi', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -1428,10 +1445,10 @@
         rankList.innerHTML = '<div class="rank-empty">加载中...</div>';
 
         try {
-            const resp = await fetch('https://wzkjgz.site/api/x0joelczoy/all');
+            const resp = await fetch('https://bjugehxenrvaqtodjkbc.supabase.co/rest/v1/scores_liesuanshi?select=*');
             if (!resp.ok) throw new Error('网络请求失败');
             const data = await resp.json();
-            const submissions = data.submissions || [];
+            const submissions = data || [];
 
             if (submissions.length === 0) {
                 rankList.innerHTML = '<div class="rank-empty">暂无数据，快来挑战吧！</div>';
